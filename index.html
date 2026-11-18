@@ -351,6 +351,41 @@ td.r,th.r{text-align:right}
 @media (prefers-reduced-motion:reduce){.skeleton{animation:none}}
 footer.wrap{padding-block:0 120px;color:var(--muted);font-size:12px}
 footer p{max-width:70ch}
+/* duels */
+.duel-sec{display:flex;flex-direction:column;gap:8px}
+.duel-card{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:18px;background:var(--glass);border:1px solid var(--glass-edge)}
+.duel-card.hot{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 35%,transparent)}
+.duel-card .game-ic{width:40px;height:40px;font-size:20px;flex:none}
+.dc-main{display:flex;flex-direction:column;min-width:0;flex:1}
+.dc-main small{color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.dc-act{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.duel-card .cta,.duel-card .ghost{padding:9px 14px;font-size:13px;flex:none}
+.duel-games{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.duel-game{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;padding:12px;border-radius:18px;border:1px solid var(--glass-edge);background:var(--glass)}
+.duel-game small{color:var(--muted);font-size:12px}
+.duel-game[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 40%,transparent)}
+.dsearch{border:1px solid var(--glass-edge);background:var(--glass-strong);border-radius:14px;padding:10px 12px;font-size:15px}
+.dplayers{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow:auto}
+.dplayer{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:14px;border:1px solid var(--glass-edge);background:var(--glass);font-weight:600;text-align:left}
+.dplayer[aria-pressed="true"]{background:linear-gradient(150deg,var(--accent),var(--accent-2));color:#fff;border-color:transparent}
+.dplayer[aria-pressed="true"] small{color:rgba(255,255,255,.85)}
+.vsbar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;text-align:center}
+.vsbar>div{display:flex;flex-direction:column;min-width:0}
+.vsbar b{font-family:var(--display);font-size:18px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vsbar small{color:var(--muted);font-size:11px}
+.pot{font-family:var(--display);font-weight:900;font-size:18px;color:#fff;padding:6px 14px;border-radius:999px;background:linear-gradient(120deg,var(--warm-1),var(--warm-2))}
+.pen-score{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;text-align:center}
+.pen-score>div{display:flex;flex-direction:column;align-items:center;gap:6px}
+.pen-score b{font-family:var(--display);font-size:44px;font-weight:900;line-height:1}
+.duel-end{text-align:center;font-family:var(--display);font-size:22px;font-weight:800;margin:0}
+.duel-end.win{color:var(--win)}.duel-end.lose{color:var(--loss)}
+/* gifts */
+.gift-card{text-align:center;align-items:center}
+.gift-box{font-size:64px;line-height:1;animation:giftpop .8s cubic-bezier(.2,.9,.3,1.4)}
+@keyframes giftpop{0%{transform:scale(.3) rotate(-20deg)}60%{transform:scale(1.15) rotate(8deg)}}
+@media (prefers-reduced-motion:reduce){.gift-box{animation:none}}
+.gift{font-family:var(--display);font-size:48px;font-weight:900;letter-spacing:-.03em;background:linear-gradient(120deg,var(--warm-1),var(--warm-2));-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1}
+.gift-msg{font-style:italic;margin:0}
 /* games hub */
 .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,158px),1fr));gap:12px}
 .tile{position:relative;border-radius:var(--r-lg);padding:16px 14px;display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;min-height:138px;color:inherit}
@@ -450,6 +485,7 @@ img{max-width:100%}
 <script src="js/install.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/games.js"></script>
+<script src="js/duels.js"></script>
 <script src="js/app.js"></script>
 <script>
 if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{})})}

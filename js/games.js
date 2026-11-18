@@ -311,6 +311,7 @@ window.VPGames = function (core) {
       return false;
     },
     settle: lotoSettle,
+    quizBank: QUIZ,
     dailyCount: () => list.filter((g) => g.daily && g.daily()).length,
   };
 };

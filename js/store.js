@@ -171,7 +171,63 @@
     };
   }
 
+  /* ---------- duels ---------- */
+  const DUEL_COLS = "id,game,stake,a,b,a_pseudo,b_pseudo,status,a_moves,b_moves,created_at,updated_at";
+  const duels = {
+    watch(uid, next, error) {
+      const load = async () => {
+        const { data, error } = await sb.from("duels").select(DUEL_COLS)
+          .or(`a.eq.${uid},b.eq.${uid},and(status.eq.open,b.is.null)`).order("updated_at", { ascending: false }).limit(60);
+        if (error) throw error;
+        return data;
+      };
+      return live("duels", null, load, next, error);
+    },
+    async create(d) {
+      const { data, error } = await sb.from("duels").insert(d).select(DUEL_COLS).single();
+      if (error) throw err(error);
+      return data;
+    },
+    async accept(id, uid, pseudo) {
+      const { data, error } = await sb.from("duels").update({ b: uid, b_pseudo: pseudo, status: "active", updated_at: new Date().toISOString() })
+        .eq("id", id).eq("status", "open").is("b", null).select(DUEL_COLS);
+      if (error) throw err(error);
+      return data && data[0];
+    },
+    async update(id, patch) {
+      const { data, error } = await sb.from("duels").update(Object.assign({ updated_at: new Date().toISOString() }, patch)).eq("id", id).select(DUEL_COLS);
+      if (error) throw err(error);
+      return data && data[0];
+    },
+    async players(q) {
+      let r = sb.from("players").select("id,pseudo,score").neq("pseudo", "").order("score", { ascending: false }).limit(30);
+      if (q) r = r.ilike("pseudo", "%" + q.replace(/[%_]/g, "") + "%");
+      const { data, error } = await r;
+      if (error) throw err(error);
+      return data;
+    },
+  };
+
+  /* ---------- gifts ---------- */
+  const gifts = {
+    watch(uid, next) {
+      const load = async () => {
+        const { data, error } = await sb.from("gifts").select("id,amount,message,from_label,created_at").eq("to_user", uid).is("claimed_at", null).order("id");
+        if (error) throw error;
+        return data;
+      };
+      return live("gifts", "to_user=eq." + uid, load, next, () => {});
+    },
+    async claim(id) {
+      const { data, error } = await sb.from("gifts").update({ claimed_at: new Date().toISOString() }).eq("id", id).is("claimed_at", null).select("id");
+      if (error) throw err(error);
+      return !!(data && data.length);
+    },
+  };
+
   window.VP = {
+    duels,
+    gifts,
     sb,
     db: { doc, collection },
     userApi,

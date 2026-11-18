@@ -443,7 +443,7 @@ const CLASSIC=[
   {id:"wheel",title:"La roue du jour",icon:"🎡",desc:"Un tour gratuit par jour",daily:()=>S.me.lastSpin!==today()},
   {id:"pen",title:"Tirs au but",icon:"🥅",desc:"5 tirs, jusqu'à ×3 ta mise"},
   {id:"exact",title:"Score exact",icon:"🎯",desc:"Trouve le score de l'affiche : +"+SCORE_BONUS+" pts",daily:()=>{const F=featured();return !!(F&&phase(F.m)==="open"&&!S.me.picks[F.m.id])}}];
-function allGames(){return CLASSIC.concat(GAMES?GAMES.list:[])}
+function allGames(){return (DUELS?[DUELS.tile]:[]).concat(CLASSIC,GAMES?GAMES.list:[])}
 function dailyCount(){return allGames().filter(g=>g.daily&&g.daily()).length}
 function classicHtml(id){
   const seg=360/WHEEL.length,P=S.pen;
@@ -476,7 +476,7 @@ function renderJeux(){
   const rescue=broke?`<div class="glass panel"><h3>Plus de points ?</h3><p class="sub">Ça arrive aux meilleurs. Reprends 20 pts une fois par jour.</p><button class="cta" id="rescue" style="margin-top:8px" ${rescued?"disabled":""}>${rescued?"Reviens demain":"Récupérer 20 pts"}</button></div>`:"";
   if(S.gameId){
     const g=allGames().find(x=>x.id===S.gameId);
-    const body=CLASSIC.some(x=>x.id===S.gameId)?classicHtml(S.gameId):(GAMES?GAMES.render(S.gameId):"");
+    const body=S.gameId==="duel"&&DUELS?DUELS.render():CLASSIC.some(x=>x.id===S.gameId)?classicHtml(S.gameId):(GAMES?GAMES.render(S.gameId):"");
     v.innerHTML=`<button class="back" data-game-back>‹ Tous les jeux</button>${rescue}<div class="glass panel game game-open"><div class="game-h"><span class="game-ic" aria-hidden="true">${g?g.icon:""}</span><h2>${esc(g?g.title:"")}</h2></div>${body}</div>`;
     if(GAMES)GAMES.mount(S.gameId);
     return;
@@ -485,7 +485,7 @@ function renderJeux(){
   v.innerHTML=`<div><h2>Mini-jeux</h2><p class="sub">${n?`<b>${n}</b> jeu${n>1?"x":""} gratuit${n>1?"s":""} à faire aujourd'hui.`:"Tous tes bonus du jour sont faits. Reviens demain !"}</p></div>${rescue}
   <div class="tiles">${allGames().map(g=>{const free=g.daily&&g.daily();return`<button class="tile glass" data-game="${g.id}"><span class="game-ic" aria-hidden="true">${g.icon}</span><b>${esc(g.title)}</b><small>${esc(g.desc)}</small>${free?`<span class="pill star">Dispo</span>`:""}</button>`}).join("")}</div>`;
 }
-function openGame(id){if(GAMES)GAMES.unmount();S.gameId=id;renderJeux();const v=$("#v-jeux");v.classList.remove("enter");void v.offsetWidth;v.classList.add("enter");window.scrollTo({top:0})}
+function openGame(id){if(GAMES)GAMES.unmount();if(id==="duel"&&DUELS)DUELS.open();S.gameId=id;renderJeux();const v=$("#v-jeux");v.classList.remove("enter");void v.offsetWidth;v.classList.add("enter");window.scrollTo({top:0})}
 function spin(){
   if(S.me.lastSpin===today()||S.wheelBusy)return;
   const i=Math.floor(Math.random()*WHEEL.length),seg=360/WHEEL.length;
@@ -516,6 +516,32 @@ const GAMES=window.VPGames?window.VPGames({S,esc,today,save,toast,
   rerender:()=>{if(S.view==="jeux")renderJeux();renderHeader();renderTabs()},
   bumpBalance:()=>renderHeader(),
   dayList,findMatch,phase,legResult,pickLabel,tshort,fDT,loadUpcoming}):null;
+
+const DUELS=window.VPDuels?window.VPDuels({S,esc,save,toast,
+  rerender:()=>{if(S.view==="jeux"&&S.gameId==="duel"){renderJeux()}else if(S.view==="jeux"&&!S.gameId){renderJeux()}renderHeader();renderTabs()},
+  bumpBalance:()=>renderHeader(),sendGlobal:(d)=>sendGlobal(d),quizBank:GAMES?GAMES.quizBank:[]}):null;
+
+/* ---------- Gifts from the creator ---------- */
+const giftQueue=[];let giftBusy=false;
+function watchGifts(){
+  if(!VP.gifts)return;
+  VP.gifts.watch(S.uid,async list=>{
+    for(const g of list||[]){
+      if(giftBusy||giftQueue.some(x=>x.id===g.id))continue;
+      giftBusy=true;
+      try{if(await VP.gifts.claim(g.id)){S.me.balance+=g.amount;S.me.gifts=(S.me.gifts||0)+g.amount;await save();renderHeader();giftQueue.push(g);showGift()}}catch(e){}
+      giftBusy=false;
+    }
+  });
+}
+function showGift(){
+  const w=$("#welcome");if(!w.hidden||!giftQueue.length)return;
+  const g=giftQueue.shift();w.hidden=false;
+  w.innerHTML=`<div class="card glass gift-card" role="dialog" aria-modal="true" aria-labelledby="gTitle"><div class="gift-box" aria-hidden="true">🎁</div>
+    <h2 id="gTitle">Un cadeau pour toi !</h2><p class="sub">De la part de ${esc(g.from_label||"le créateur de Vprono")}</p>
+    <div class="gift num">+${g.amount} pts</div>${g.message?`<p class="gift-msg">« ${esc(g.message)} »</p>`:""}
+    <button class="cta" id="giftOk">Merci !</button></div>`;
+}
 
 /* ---------- Glue ---------- */
 function renderTabs(){const b=$("#gBadge");b.hidden=!S.unread;b.textContent=S.unread;const j=$("#jBadge");if(j){const n=S.mode==="cloud"?dailyCount():0;j.hidden=!n;j.textContent=n}}
@@ -553,6 +579,7 @@ function renderClassement(){
 }
 function renderWelcome(){
   const w=$("#welcome");
+  if(w.querySelector(".gift-card"))return;
   if(S.mode!=="cloud"||S.me.pseudo||S.welcomeDone||!S.canWrite){w.hidden=true;return}
   w.hidden=false;
   w.innerHTML=`<div class="card glass" role="dialog" aria-modal="true" aria-labelledby="wTitle"><div class="brand" style="justify-content:center;font-size:26px"><svg class="logo big" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="vpg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2F7BFF"/><stop offset=".55" stop-color="#7B5CFF"/><stop offset="1" stop-color="#FF4D8D"/></linearGradient><linearGradient id="vph2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient></defs><rect x="2" y="2" width="60" height="60" rx="18" fill="url(#vpg2)"/><rect x="2" y="2" width="60" height="30" rx="18" fill="url(#vph2)"/><path d="M15 17l13 30 11-25" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="45" cy="17" r="7.5" fill="#fff"/><path d="M45 12.6l3.6 2.6-1.4 4.2h-4.4l-1.4-4.2z" fill="#1B1F3B"/></svg><span>V<i>prono</i></span></div>
@@ -579,7 +606,8 @@ $("#scrim").addEventListener("click",()=>{S.slipOpen=false;renderSlip()});
 window.addEventListener("resize",()=>renderSlip());
 document.addEventListener("click",async e=>{
   const t=e.target.closest("button,[id=slipToggle]");if(!t)return;
-  if(S.view==="jeux"){if(t.dataset.game){openGame(t.dataset.game);return}if(t.hasAttribute("data-game-back")){openGame(null);return}if(GAMES&&GAMES.click(t))return}
+  if(t.id==="giftOk"){$("#welcome").hidden=true;showGift();return}
+  if(S.view==="jeux"){if(t.dataset.game){openGame(t.dataset.game);return}if(t.hasAttribute("data-game-back")){openGame(null);return}if(S.gameId==="duel"&&DUELS&&DUELS.click(t))return;if(GAMES&&GAMES.click(t))return}
   if(t.dataset.day){selectDay(t.dataset.day)}
   else if(t.dataset.shift){const ds=visibleDays(),i=ds.indexOf(S.day)+Number(t.dataset.shift);if(ds[i])selectDay(ds[i])}
   else if(t.dataset.lg){S.league=t.dataset.lg;const ds=visibleDays();if(!ds.includes(S.day)){S.day=nearestDay(ds);watchDay(S.day)}renderMatchs()}
@@ -612,6 +640,7 @@ document.addEventListener("click",async e=>{
   else if(t.id==="rescue"){if(S.me.lastRescue===today())return;S.me.lastRescue=today();S.me.balance+=20;save();toast("+20 pts. Bonne reprise !");renderAll()}
 });
 document.addEventListener("input",e=>{
+  if(DUELS&&S.gameId==="duel"&&DUELS.input(e))return;
   if(e.target.id==="chatIn")S.chatDraft=e.target.value;
   if(e.target.id==="gChatIn")S.gDraft=e.target.value;
   if(e.target.id==="stakeIn"){S.stake=e.target.value===""?"":Number(e.target.value);const pos=e.target.selectionStart;renderSlip();const i=$("#stakeIn");if(i){i.focus();try{i.setSelectionRange(pos,pos)}catch(_){}}}
@@ -640,6 +669,8 @@ setInterval(()=>{refreshPendingDays()},5*60000);
   renderAll();setView(S.view);
   if(S.me.groups.length)openGroup(S.me.groups[0]);
   watchGlobal();
+  if(DUELS)DUELS.watch();
+  watchGifts();
   refreshPendingDays();
 })();
 })();
