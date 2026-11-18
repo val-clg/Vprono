@@ -212,7 +212,7 @@
   const gifts = {
     watch(uid, next) {
       const load = async () => {
-        const { data, error } = await sb.from("gifts").select("id,amount,message,from_label,created_at").eq("to_user", uid).is("claimed_at", null).order("id");
+        const { data, error } = await sb.from("gifts").select("*").eq("to_user", uid).is("claimed_at", null).order("id");
         if (error) throw error;
         return data;
       };
@@ -245,7 +245,15 @@
     async remove(endpoint) { await sb.from("push_subs").delete().eq("endpoint", endpoint); },
   };
 
+  const purchases = {
+    async create(uid, d) {
+      const { error } = await sb.from("purchase_requests").insert({ user_id: uid, pseudo: d.pseudo, item: d.item, price: d.price, code: d.code });
+      if (error) throw err(error);
+    },
+  };
+
   window.VP = {
+    purchases,
     boosts,
     push,
     duels,

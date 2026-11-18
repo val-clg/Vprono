@@ -8,7 +8,7 @@ window.VPCasino = function (core) {
   const C = { game: null, chip: 5, rl: { bets: {}, spinning: false, last: [], rot: 0 }, bj: null, bjBet: 10, sl: { bet: 5, spinning: false, reels: ["7️⃣", "💎", "⚽"], msg: "" }, mn: null, mnBet: 10, mnCount: 3 };
   const rand = (n) => { const a = new Uint32Array(1); const lim = Math.floor(4294967296 / n) * n; let x; do { crypto.getRandomValues(a); x = a[0]; } while (x >= lim); return x % n; };
   const stats = () => (S.me.casino && typeof S.me.casino === "object" ? S.me.casino : (S.me.casino = { wagered: 0, won: 0, biggest: 0 }));
-  const take = (n) => { if (!Number.isInteger(n) || n < 1) { toast("Mise un nombre entier de points."); return false; } if (n > S.me.balance) { toast("Pas assez de points."); return false; } S.me.balance -= n; stats().wagered += n; core.bumpBalance(); return true; };
+  const take = (n) => { if (core.track) core.track("casino"); if (!Number.isInteger(n) || n < 1) { toast("Mise un nombre entier de points."); return false; } if (n > S.me.balance) { toast("Pas assez de points."); return false; } S.me.balance -= n; stats().wagered += n; core.bumpBalance(); return true; };
   const give = (n) => { n = Math.floor(n); if (n > 0) { S.me.balance += n; stats().won += n; stats().biggest = Math.max(stats().biggest || 0, n); core.bumpBalance(); } save(); };
   const rr = () => core.rerender();
   const reduce = () => matchMedia("(prefers-reduced-motion: reduce)").matches;

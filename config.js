@@ -6,5 +6,7 @@ window.VPRONO_CONFIG = {
   // Donation page (Ko-fi, Tipeee, Buy Me a Coffee, PayPal.me...). Leave empty to hide the "Soutenir Vprono" card.
   // Public key for push notifications (the private half lives in Supabase, table app_secrets)
   vapidPublicKey: "BNTjVyKcQxtxfEOH4GCGH0czOsD8gYqmTfFOa7sQq-KALEawK8o17Dsknelu58FqR3gRkibVXoNTHErhsn0alSU",
+  // PayPal.me link used for Supporter purchases (cosmetic only)
+  paypalMe: "https://paypal.me/CologneValentin",
   donateUrl: "https://paypal.me/CologneValentin",
 };

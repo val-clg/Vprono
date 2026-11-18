@@ -124,7 +124,7 @@ function settle(){
     if(lost){b.status="lost";b.payout=0;S.me.stats.lost++;changed=true}
     else if(all){
       const live=b.legs.filter(l=>l.res==="won");
-      if(!live.length){b.status="void";b.payout=b.stake}else{b.status="won";b.payout=Math.floor(b.stake*live.reduce((a,l)=>a*l.odd,1));S.me.stats.won++;S.me.stats.best=Math.max(S.me.stats.best,b.odds)}
+      if(!live.length){b.status="void";b.payout=b.stake}else{b.status="won";b.payout=Math.floor(b.stake*live.reduce((a,l)=>a*l.odd,1));track("win");S.me.stats.won++;S.me.stats.best=Math.max(S.me.stats.best,b.odds)}
       S.me.balance+=b.payout;gain+=b.payout;changed=true;
     }
   });
@@ -326,6 +326,7 @@ function place(){
   const odds=slipOdds();
   S.me.balance-=stake;
   S.me.bets.unshift({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),legs:S.slip.map(s=>s.live?{live:1,g:s.g,n:s.n,k:s.k,odd:s.odd,lbl:s.lbl,mt:s.mt}:{d:s.d,mid:s.mid,mk:s.mk,odd:s.odd,lbl:s.lbl,mt:s.mt,k:(findMatch(s.d,s.mid)||{}).k}),stake,odds,placedAt:Date.now(),status:"pending"});
+  track("bet");if(S.me.bets[0].legs.some(l=>l.live))track("flash");
   S.slip=[];S.slipOpen=false;save();toast("Pari validé : "+stake+" pts à "+odds.toFixed(2));renderAll();
 }
 
@@ -358,7 +359,7 @@ function renderParis(){
 function nameOf(uid){const p=S.members.find(x=>x.uid===uid);return(p&&p.pseudo)||S.names[uid]||"Joueur"}
 const fMsg=new Intl.DateTimeFormat("fr-FR",{weekday:"short",hour:"2-digit",minute:"2-digit",timeZone:tz});
 function msgHtml(x,name){
-  const mine=x.u===S.uid,who=`<span class="who">${esc(name)}<span class="when">${x.ts?esc(fMsg.format(x.ts)):""}</span></span>`;
+  const mine=x.u===S.uid,who=`<span class="who">${styledName(name,x.u)}<span class="when">${x.ts?esc(fMsg.format(x.ts)):""}</span></span>`;
   if(x.kind==="bet"&&x.bet){const b=x.bet;return`<div class="msg ticket${mine?" mine":""}">${who}🎟️ Ticket ${b.n>1?"combiné × "+esc(b.n):"simple"} · ${Number(b.stake)||0} pts à <b>${Number(b.odds||0).toFixed(2)}</b><ul>${(b.legs||[]).slice(0,10).map(l=>`<li>${esc(l)}</li>`).join("")}</ul></div>`}
   return`<div class="msg${mine?" mine":""}">${who}${esc(x.t)}</div>`;
 }
@@ -384,7 +385,7 @@ function watchGlobal(){
 async function sendGlobal(data){
   if(!S.canWrite)return false;
   if(!S.me.pseudo){toast("Choisis d'abord un pseudo dans « Mes paris ».");return false}
-  try{await S.db.collection("global/messages").add(Object.assign({u:S.uid,p:S.me.pseudo,ts:Date.now()},data));S.gJump=true;return true}
+  try{await S.db.collection("global/messages").add(Object.assign({u:S.uid,p:S.me.pseudo,ts:Date.now()},data));S.gJump=true;track("chat");return true}
   catch(e){toast("Message non envoyé, réessaie.");return false}
 }
 function renderGroupes(){
@@ -437,7 +438,7 @@ function openGroup(code){
 }
 async function sendMsg(data){
   if(!S.activeGroup||!S.canWrite)return false;
-  try{await S.db.collection("groups/"+S.activeGroup+"/messages").add(Object.assign({u:S.uid,ts:Date.now()},data));S.chatJump=true;return true}
+  try{await S.db.collection("groups/"+S.activeGroup+"/messages").add(Object.assign({u:S.uid,ts:Date.now()},data));S.chatJump=true;track("chat");return true}
   catch(e){toast("Message non envoyé, réessaie.");return false}
 }
 async function loadGroupMeta(){await Promise.all(S.me.groups.map(async c=>{if(S.groupsMeta[c])return;try{const d=await S.db.doc("groups/"+c).get();if(d.exists)S.groupsMeta[c]=d.data()}catch(e){}}))}
@@ -511,7 +512,7 @@ function renderJeux(){
   <div class="tiles">${allGames().map(g=>{const free=g.daily&&g.daily();return`<button class="tile glass" data-game="${g.id}"><span class="game-ic" aria-hidden="true">${g.icon}</span><b>${esc(g.title)}</b><small>${esc(g.desc)}</small>${free?`<span class="pill star">Dispo</span>`:""}</button>`}).join("")}</div>`;
 }
 function openGame(id){if(GAMES)GAMES.unmount();if(id==="duel"&&DUELS)DUELS.open();S.gameId=id;renderJeux();const v=$("#v-jeux");v.classList.remove("enter");void v.offsetWidth;v.classList.add("enter");window.scrollTo({top:0})}
-function spin(){
+function spin(){if(S.me.lastSpin!==today())track("game");
   if(S.me.lastSpin===today()||S.wheelBusy)return;
   const i=Math.floor(Math.random()*WHEEL.length),seg=360/WHEEL.length;
   S.wheelBusy=true;S.me.lastSpin=today();
@@ -520,7 +521,7 @@ function spin(){
   const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
   setTimeout(()=>{S.wheelBusy=false;S.me.balance+=WHEEL[i];save();toast("+"+WHEEL[i]+" pts gagnés à la roue !");renderAll()},reduce?100:4100);
 }
-function penStart(){
+function penStart(){track("game");
   const st=Number($("#penStake").value);
   if(!Number.isInteger(st)||st<1){toast("Mise un nombre entier de points.");return}
   if(st>S.me.balance){toast("Pas assez de points.");return}
@@ -540,11 +541,11 @@ function penShot(c){
 const GAMES=window.VPGames?window.VPGames({S,esc,today,save,toast,
   rerender:()=>{if(S.view==="jeux")renderJeux();renderHeader();renderTabs()},
   bumpBalance:()=>renderHeader(),
-  dayList,findMatch,phase,legResult,pickLabel,tshort,fDT,loadUpcoming}):null;
+  dayList,findMatch,phase,legResult,pickLabel,tshort,fDT,loadUpcoming,track:(e)=>track(e)}):null;
 
 const DUELS=window.VPDuels?window.VPDuels({S,esc,save,toast,
   rerender:()=>{if(S.view==="jeux"&&S.gameId==="duel"){renderJeux()}else if(S.view==="jeux"&&!S.gameId){renderJeux()}renderHeader();renderTabs()},
-  bumpBalance:()=>renderHeader(),sendGlobal:(d)=>sendGlobal(d),quizBank:GAMES?GAMES.quizBank:[]}):null;
+  bumpBalance:()=>renderHeader(),sendGlobal:(d)=>sendGlobal(d),quizBank:GAMES?GAMES.quizBank:[],track:(e)=>track(e)}):null;
 
 const LIVE=window.VPLive?window.VPLive({S,esc,save,toast,bumpBalance:()=>renderHeader(),
   toggleLive:leg=>toggleLive(leg),inSlip:(lid,k)=>S.slip.some(s=>s.lid===lid&&s.k===k),
@@ -613,8 +614,17 @@ async function checkNotifs(){
     if(sub){S.notifOn=true;VP.push.save(S.uid,sub).catch(()=>{})}}catch(e){}
 }
 
-const CASINO=window.VPCasino?window.VPCasino({S,esc,save,toast,bumpBalance:()=>renderHeader(),rerender:()=>renderCasino()}):null;
+const CASINO=window.VPCasino?window.VPCasino({S,esc,save,toast,bumpBalance:()=>renderHeader(),rerender:()=>renderCasino(),track:(e)=>track(e)}):null;
 function renderCasino(){const v=$("#v-casino");if(!v)return;if(S.mode!=="cloud"){v.innerHTML=`<div><h2>🎰 Casino</h2></div><div class="glass panel empty">Connexion…</div>`;return}if(CASINO){v.innerHTML=CASINO.render();CASINO.mount()}}
+
+const FUT=window.VPFut?window.VPFut({S,esc,save,toast,today,mode:()=>S.mode,bumpBalance:()=>renderHeader(),
+  rerender:()=>renderShop(),renderBadges:()=>renderTabs(),
+  restyle:()=>{renderClassement();renderChat();if(S.view==="groupes")renderGroupes()},
+  requestPurchase:d=>VP.purchases.create(S.uid,Object.assign({pseudo:S.me.pseudo},d))}):null;
+const track=(ev,k)=>{if(FUT)FUT.track(ev,k)};
+function renderShop(){const v=$("#v-shop");if(!v)return;if(S.mode!=="cloud"){v.innerHTML=`<div><h2>Club Vprono</h2></div><div class="glass panel empty">Connexion…</div>`;return}if(FUT)v.innerHTML=FUT.render()}
+function dataOf(uid){if(uid===S.uid)return S.me;const p=(S.lb||[]).find(x=>x.uid===uid)||(S.members||[]).find(x=>x.uid===uid);return p||null}
+function styledName(name,uid){return FUT?FUT.nameHtml(name,dataOf(uid)):esc(name)}
 
 /* ---------- Gifts from the creator ---------- */
 const giftQueue=[];let giftBusy=false;
@@ -624,7 +634,7 @@ function watchGifts(){
     for(const g of list||[]){
       if(giftBusy||giftQueue.some(x=>x.id===g.id))continue;
       giftBusy=true;
-      try{if(await VP.gifts.claim(g.id)){S.me.balance+=g.amount;S.me.gifts=(S.me.gifts||0)+g.amount;await save();renderHeader();giftQueue.push(g);showGift()}}catch(e){}
+      try{if(await VP.gifts.claim(g.id)){S.me.balance+=g.amount||0;S.me.gifts=(S.me.gifts||0)+(g.amount||0);if(g.items&&FUT)FUT.onGiftItems(g.items);await save();renderHeader();giftQueue.push(g);showGift()}}catch(e){}
       giftBusy=false;
     }
   });
@@ -634,15 +644,15 @@ function showGift(){
   const g=giftQueue.shift();w.hidden=false;
   w.innerHTML=`<div class="card glass gift-card" role="dialog" aria-modal="true" aria-labelledby="gTitle"><div class="gift-box" aria-hidden="true">🎁</div>
     <h2 id="gTitle">Un cadeau pour toi !</h2><p class="sub">De la part de ${esc(g.from_label||"le créateur de Vprono")}</p>
-    <div class="gift num">+${g.amount} pts</div>${g.message?`<p class="gift-msg">« ${esc(g.message)} »</p>`:""}
+    ${g.amount?`<div class="gift num">+${g.amount} pts</div>`:""}${(g.items||[]).length&&FUT?`<p class="gift-items">${g.items.map(id=>{const it=FUT.item(id);return it?`<span class="pill star">${it.emoji?it.emoji+" ":""}${esc(it.name)}</span>`:""}).join(" ")}</p>`:""}${g.message?`<p class="gift-msg">« ${esc(g.message)} »</p>`:""}
     <button class="cta" id="giftOk">Merci !</button></div>`;
 }
 
 /* ---------- Glue ---------- */
-function renderTabs(){const b=$("#gBadge");b.hidden=!S.unread;b.textContent=S.unread;const j=$("#jBadge");if(j){const n=S.mode==="cloud"?dailyCount():0;j.hidden=!n;j.textContent=n}}
+function renderTabs(){const sb=$("#shopBadge");if(sb&&FUT){const n=S.mode==="cloud"?FUT.claimable():0;sb.hidden=!n;sb.textContent=n}const b=$("#gBadge");b.hidden=!S.unread;b.textContent=S.unread;const j=$("#jBadge");if(j){const n=S.mode==="cloud"?dailyCount():0;j.hidden=!n;j.textContent=n}}
 let lastBal=null;
 function renderHeader(){const el=$("#bal");if(lastBal!==null&&lastBal!==S.me.balance){el.classList.remove("bump");void el.offsetWidth;el.classList.add("bump")}lastBal=S.me.balance;el.innerHTML=S.me.balance+"<span>pts</span>";$("#who").textContent=S.mode==="cloud"?(S.me.pseudo||S.names[S.uid]||""):S.mode==="loading"?"Chargement…":"Hors connexion"}
-function avatar(uid,label,cls){const h=hash(uid||"x")%360;return`<i class="${cls}" style="background:radial-gradient(circle at 32% 26%,hsl(${h} 75% 64%),hsl(${h} 62% 36%) 72%)" aria-hidden="true">${esc((label||"?").trim().slice(0,1).toUpperCase())}</i>`}
+function avatar(uid,label,cls,data){const h=hash(uid||"x")%360;const fr=FUT&&data?FUT.styleOf(data).frame:null;return`<i class="${cls}${fr?" vp-framed":""}" style="background:radial-gradient(circle at 32% 26%,hsl(${h} 75% 64%),hsl(${h} 62% 36%) 72%)${fr?";--fr:"+fr.css:""}" aria-hidden="true">${esc((label||"?").trim().slice(0,1).toUpperCase())}</i>`}
 function lbName(p){return p.pseudo||S.names[p.uid]||"Joueur"}
 function watchLeaderboard(){
   if(S.lbUnsub||!S.db)return;
@@ -660,7 +670,7 @@ function playerSheet(uid){
   const stl={pending:"En cours",won:"Gagné",lost:"Perdu",void:"Remboursé"};
   w.hidden=false;
   w.innerHTML=`<div class="card glass player-card" role="dialog" aria-modal="true" aria-labelledby="pTitle">
-    <div class="row-between"><span class="lb-name">${avatar(p.uid,lbName(p),"av")}<h2 id="pTitle">${esc(lbName(p))}</h2></span><button class="x" id="pClose" aria-label="Fermer">×</button></div>
+    <div class="row-between"><span class="lb-name">${avatar(p.uid,lbName(p),"av",p)}<h2 id="pTitle">${FUT?FUT.nameHtml(lbName(p),p):esc(lbName(p))}</h2></span><button class="x" id="pClose" aria-label="Fermer">×</button></div>
     <div class="stats3"><div><b class="num">${Number(p.score)||scoreOf(p)}</b><small>points</small></div><div><b class="num">${st.won||0}</b><small>paris gagnés</small></div><div><b class="num">${n?Math.round(100*(st.won||0)/n)+"%":"–"}</b><small>réussite</small></div><div><b class="num">${st.duelsWon||0}</b><small>duels gagnés</small></div></div>
     <h3>Derniers paris</h3>
     <div class="feed pc-feed">${(p.bets||[]).slice(0,12).map(b=>`<div><span>${b.legs.length>1?`<b>Combiné × ${b.legs.length}</b><br>`:""}${b.legs.slice(0,4).map(l=>`${esc(l.lbl||l.mk)} <span class="note">· ${esc(l.mt||"")} @${Number(l.odd).toFixed(2)}</span>`).join("<br>")}<br><span class="note">Mise ${Number(b.stake)||0} pts · cote ${Number(b.odds||0).toFixed(2)}</span></span><span class="st ${esc(b.status)}">${stl[b.status]||""}${b.status==="won"?" +"+(Number(b.payout)||0):""}</span></div>`).join("")||`<p class="empty">Aucun pari pour l'instant.</p>`}</div>
@@ -680,7 +690,7 @@ function renderClassement(){
     h+=`<div class="podium">${order.map((p,i)=>p?`<div class="pod glass ${cls[i]}"><span class="medal">${med[i]}</span>${avatar(p.uid,lbName(p),"av")}<span class="nm">${esc(lbName(p))}${p.uid===S.uid?" (toi)":""}</span><b class="num">${pts(p)}</b><span class="note">pts</span></div>`:"<div></div>").join("")}</div>`;
   }
   h+=`<div class="glass panel"><div class="tablewrap"><table class="lb"><thead><tr><th>#</th><th>Joueur</th><th class="r">Points</th><th class="r opt">Gagnés</th><th class="r opt">Réussite</th></tr></thead><tbody>
-  ${lb.map((p,i)=>{const st=p.stats||{},n=(st.won||0)+(st.lost||0);return`<tr class="${p.uid===S.uid?"me":""} lb-row" data-player="${esc(p.uid)}"><td class="rank num">${i+1}</td><td><div class="lb-name">${avatar(p.uid,lbName(p),"lb-av")}<span>${esc(lbName(p))}${p.uid===S.uid?" (toi)":""}</span></div></td><td class="r num"><b>${pts(p)}</b></td><td class="r num opt">${st.won||0}</td><td class="r num opt">${n?Math.round(100*(st.won||0)/n)+" %":"–"}</td></tr>`}).join("")}
+  ${lb.map((p,i)=>{const st=p.stats||{},n=(st.won||0)+(st.lost||0);return`<tr class="${p.uid===S.uid?"me":""} lb-row" data-player="${esc(p.uid)}"><td class="rank num">${i+1}</td><td><div class="lb-name">${avatar(p.uid,lbName(p),"lb-av",p)}<span>${FUT?FUT.nameHtml(lbName(p),p):esc(lbName(p))}${p.uid===S.uid?" (toi)":""}</span></div></td><td class="r num"><b>${pts(p)}</b></td><td class="r num opt">${st.won||0}</td><td class="r num opt">${n?Math.round(100*(st.won||0)/n)+" %":"–"}</td></tr>`}).join("")}
   </tbody></table></div></div><p class="note">Le top 200 s'affiche. Pour apparaître sous ton pseudo, choisis-le dans « Mes paris ».</p>`;
   v.innerHTML=h;
 }
@@ -698,7 +708,7 @@ function renderWelcome(){
   setTimeout(()=>{const i=$("#wPseudo");if(i)i.focus()},50);
 }
 function renderAll(){renderHeader();renderTabs();renderMatchs();renderSlip();renderParis();renderGroupes();renderJeux();renderClassement();renderWelcome()}
-function setView(v){const changed=S.view!==v;if(changed&&S.view==="jeux"&&GAMES){GAMES.unmount()}if(changed&&S.view==="casino"&&CASINO)CASINO.leave();S.view=v;S.slipOpen=false;if(v==="groupes"){S.unread=0;renderTabs();S.chatJump=true;S.gJump=true;renderChat()}document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===v));if(v==="classement"){watchLeaderboard();renderClassement()}if(v==="casino")renderCasino();["matchs","paris","groupes","jeux","classement","casino"].forEach(x=>{const el=$("#v-"+x);el.hidden=x!==v;if(x===v&&changed){el.classList.remove("enter");void el.offsetWidth;el.classList.add("enter")}});$("#slip").hidden=v!=="matchs"&&!S.slip.length;renderSlip();window.scrollTo({top:0});if(v==="jeux")renderJeux();if(v==="paris")renderParis()}
+function setView(v){const changed=S.view!==v;if(changed&&S.view==="jeux"&&GAMES){GAMES.unmount()}if(changed&&S.view==="casino"&&CASINO)CASINO.leave();S.view=v;S.slipOpen=false;if(v==="groupes"){S.unread=0;renderTabs();S.chatJump=true;S.gJump=true;renderChat()}document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===v));if(v==="classement"){watchLeaderboard();renderClassement()}if(v==="casino")renderCasino();if(v==="shop")renderShop();["matchs","paris","groupes","jeux","classement","casino","shop"].forEach(x=>{const el=$("#v-"+x);el.hidden=x!==v;if(x===v&&changed){el.classList.remove("enter");void el.offsetWidth;el.classList.add("enter")}});$("#slip").hidden=v!=="matchs"&&!S.slip.length;renderSlip();window.scrollTo({top:0});if(v==="jeux")renderJeux();if(v==="paris")renderParis()}
 function selectDay(d){S.day=d;S.detail=null;watchDay(d);renderMatchs()}
 
 $("#tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(b)setView(b.dataset.v)});
@@ -716,6 +726,8 @@ document.addEventListener("click",async e=>{
   const t=e.target.closest("button,[id=slipToggle]");if(!t)return;
   if(t.id==="giftOk"){$("#welcome").hidden=true;showGift();return}
   if(S.view==="casino"&&CASINO&&CASINO.click(t))return;
+  if(t.id==="shopBtn"){setView("shop");return}
+  if(FUT&&FUT.click(t))return;
   if(t.id==="pClose"){$("#welcome").hidden=true;return}
   if(t.id==="boostGo"){placeBoost();return}
   if(t.id==="notifOn"){enableNotifs();return}

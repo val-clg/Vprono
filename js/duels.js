@@ -66,6 +66,7 @@ window.VPDuels = function (core) {
         const won = (w === "a" && amA) || (w === "b" && amB);
         const pay = w === "draw" ? d.stake : won ? d.stake * 2 : 0;
         S.me.balance += pay; L[d.id] = "done"; changed = true; gain += pay;
+        if (won && core.track) core.track("duel_win");
         const st = S.me.stats; st.duelsWon = (st.duelsWon || 0) + (won ? 1 : 0); st.duelsPlayed = (st.duelsPlayed || 0) + 1;
         toast(w === "draw" ? "Duel nul contre " + oppName(d) + " : mise rendue." : won ? "🏆 Duel gagné contre " + oppName(d) + " : +" + pay + " pts !" : "Duel perdu contre " + oppName(d) + ".");
         if (d.status !== "done") VP.duels.update(d.id, { status: "done" }).catch(() => {});

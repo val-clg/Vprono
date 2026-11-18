@@ -6,7 +6,8 @@ window.VPGames = function (core) {
   const { S, esc, today, save, toast, rerender } = core;
   const rnd = () => (crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296);
   const add = (n, why) => { n = Math.floor(n); if (!n) return; S.me.balance += n; core.bumpBalance(); save(); if (why) toast(why); };
-  const pay = (n) => { if (!Number.isInteger(n) || n < 1) { toast("Mise un nombre entier de points."); return false; } if (n > S.me.balance) { toast("Pas assez de points."); return false; } S.me.balance -= n; core.bumpBalance(); save(); return true; };
+  const track = (e) => core.track && core.track(e);
+  const pay = (n) => { track("game"); if (!Number.isInteger(n) || n < 1) { toast("Mise un nombre entier de points."); return false; } if (n > S.me.balance) { toast("Pas assez de points."); return false; } S.me.balance -= n; core.bumpBalance(); save(); return true; };
   const G = S.g || (S.g = {});
   const mem = (k) => (S.me[k] && typeof S.me[k] === "object" ? S.me[k] : (S.me[k] = {}));
   const shuffle = (arr, r) => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }; // same order on every device
@@ -43,7 +44,7 @@ window.VPGames = function (core) {
   }
   function lotoSubmit() {
     const c = lotoCandidates(); if (c.length < 7 || c.some(({ m }) => !G.loto[m.id])) return;
-    S.me.loto = { at: Date.now(), settled: false, picks: c.map(({ m, d }) => ({ mid: m.id, d, k: G.loto[m.id], mt: core.tshort(m.h) + " – " + core.tshort(m.a) })) };
+    track("game"); S.me.loto = { at: Date.now(), settled: false, picks: c.map(({ m, d }) => ({ mid: m.id, d, k: G.loto[m.id], mt: core.tshort(m.h) + " – " + core.tshort(m.a) })) };
     G.loto = {}; save(); toast("Grille validée. Bonne chance !"); rerender();
   }
   function lotoSettle() {
@@ -202,7 +203,7 @@ window.VPGames = function (core) {
   }
   function quizNext() {
     const st = G.quiz; st.i++; st.picked = null;
-    if (st.i >= 5) { const Q = mem("quiz"); Q.day = today(); Q.done = true; Q.score = st.score; Q.win = st.score * 10 + (st.score === 5 ? 10 : 0); add(Q.win, "Quiz terminé : " + st.score + "/5, +" + Q.win + " pts"); }
+    if (st.i >= 5) { track("game"); if (st.score === 5) track("quiz_perfect"); const Q = mem("quiz"); Q.day = today(); Q.done = true; Q.score = st.score; Q.win = st.score * 10 + (st.score === 5 ? 10 : 0); add(Q.win, "Quiz terminé : " + st.score + "/5, +" + Q.win + " pts"); }
     rerender();
   }
 
@@ -243,7 +244,7 @@ window.VPGames = function (core) {
   }
   function scratchDone() {
     const T = mem("scratch"); if (T.day === today()) return;
-    const tk = scratchTicket(); T.day = today(); T.win = tk.prize;
+    const tk = scratchTicket(); T.day = today(); T.win = tk.prize; track("game");
     if (tk.prize) add(tk.prize, "Ticket gagnant : +" + tk.prize + " pts !"); else save();
     rerender();
   }
@@ -280,7 +281,7 @@ window.VPGames = function (core) {
     J.raf = requestAnimationFrame(step);
   }
   function juggleEnd() {
-    const J = G.jg, M = mem("juggle");
+    const J = G.jg, M = mem("juggle"); track("game");
     if (M.day !== today()) { M.day = today(); M.earned = 0; }
     const gain = Math.min(Math.floor(J.n / 5), JG_DAILY_MAX - (M.earned || 0));
     const rec = J.n > (M.best || 0); M.best = Math.max(M.best || 0, J.n);
