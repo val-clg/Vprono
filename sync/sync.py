@@ -844,32 +844,76 @@ def make_boost(base, out_dir):
     return doc
 
 
+def _b64u(b):
+    import base64
+    return base64.urlsafe_b64encode(b).decode().rstrip("=")
+
+
+def _b64u_dec(s):
+    import base64
+    return base64.urlsafe_b64decode(s + "=" * (-len(s) % 4))
+
+
+def webpush_send(sub, payload, pem, subject="mailto:noreply@vprono.app", ttl=6 * 3600):
+    """Encrypt (RFC 8291, aes128gcm) and send one Web Push message signed with VAPID (RFC 8292). Returns the HTTP status."""
+    import os as _os
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec, utils
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+
+    ua_pub = _b64u_dec(sub["p256dh"]); auth = _b64u_dec(sub["auth"])
+    eph = ec.generate_private_key(ec.SECP256R1())
+    as_pub = eph.public_key().public_bytes(serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)
+    shared = eph.exchange(ec.ECDH(), ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), ua_pub))
+    ikm = HKDF(hashes.SHA256(), 32, auth, b"WebPush: info\x00" + ua_pub + as_pub).derive(shared)
+    salt = _os.urandom(16)
+    cek = HKDF(hashes.SHA256(), 16, salt, b"Content-Encoding: aes128gcm\x00").derive(ikm)
+    nonce = HKDF(hashes.SHA256(), 12, salt, b"Content-Encoding: nonce\x00").derive(ikm)
+    body = salt + (4096).to_bytes(4, "big") + bytes([len(as_pub)]) + as_pub + AESGCM(cek).encrypt(nonce, payload.encode() + b"\x02", None)
+
+    key = serialization.load_pem_private_key(pem.encode(), None)
+    pub = key.public_key().public_bytes(serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)
+    u = urllib.parse.urlparse(sub["endpoint"])
+    hdr = _b64u(json.dumps({"typ": "JWT", "alg": "ES256"}).encode())
+    claims = _b64u(json.dumps({"aud": f"{u.scheme}://{u.netloc}", "exp": int(time.time()) + 12 * 3600, "sub": subject}).encode())
+    r, s_ = utils.decode_dss_signature(key.sign(f"{hdr}.{claims}".encode(), ec.ECDSA(hashes.SHA256())))
+    jwt = f"{hdr}.{claims}.{_b64u(r.to_bytes(32, 'big') + s_.to_bytes(32, 'big'))}"
+    req = urllib.request.Request(sub["endpoint"], data=body, method="POST", headers={
+        "Content-Encoding": "aes128gcm", "Content-Type": "application/octet-stream", "TTL": str(ttl), "Urgency": "normal",
+        "Authorization": f"vapid t={jwt}, k={_b64u(pub)}"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return resp.status
+    except urllib.error.HTTPError as e:
+        return e.code
+
+
 def send_push(base, title, body, url="./"):
-    """Send a notification to every registered device. Needs `pip install pywebpush`."""
-    from pywebpush import webpush, WebPushException
+    """Send a notification to every registered device (only needs the `cryptography` package)."""
     key = sb_request(base, "GET", "app_secrets?select=value&key=eq.vapid_private_pem")
     if not key:
         raise SystemExit("VAPID key missing in app_secrets")
     pem = key[0]["value"]
     subs = sb_request(base, "GET", "push_subs?select=endpoint,p256dh,auth")
-    sent, gone = 0, []
+    sent, gone, failed = 0, [], 0
     payload = json.dumps({"title": title, "body": body, "url": url, "tag": "boost"})
     for s in subs:
         try:
-            webpush({"endpoint": s["endpoint"], "keys": {"p256dh": s["p256dh"], "auth": s["auth"]}}, payload,
-                    vapid_private_key=pem, vapid_claims={"sub": "mailto:noreply@vprono.app"}, ttl=6 * 3600)
-            sent += 1
-        except WebPushException as e:
-            code = getattr(e.response, "status_code", None)
-            if code in (404, 410):
-                gone.append(s["endpoint"])
-            else:
-                print("push failed", code, str(e)[:160], file=sys.stderr)
+            code = webpush_send(s, payload, pem)
         except Exception as e:
+            code = None
             print("push failed", str(e)[:160], file=sys.stderr)
+        if code in (200, 201, 202):
+            sent += 1
+        elif code in (404, 410):
+            gone.append(s["endpoint"])
+        else:
+            failed += 1
+            print("push failed with status", code, s["endpoint"][:40], file=sys.stderr)
     for ep in gone:
         sb_request(base, "DELETE", "push_subs?endpoint=eq." + urllib.parse.quote(ep, safe=""))
-    print(json.dumps({"devices": len(subs), "sent": sent, "removed": len(gone)}))
+    print(json.dumps({"devices": len(subs), "sent": sent, "removed": len(gone), "failed": failed}))
 
 
 def main():
