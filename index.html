@@ -257,7 +257,7 @@ h3{font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:-.01
 .stake{display:flex;gap:6px;flex-wrap:wrap;position:relative}
 .stake input,.form input{flex:1;min-width:80px;border:1px solid var(--glass-edge);background:var(--glass-strong);border-radius:14px;padding:10px 12px;font-weight:600;box-shadow:inset 0 1px 2px rgba(0,0,0,.06)}
 .chipbtn{border:1px solid var(--glass-edge);background:var(--glass-strong);border-radius:14px;padding:8px 12px;font-weight:700}
-.sum{display:flex;justify-content:space-between;align-items:baseline;font-weight:600;position:relative}
+.sum{display:flex;justify-content:space-between;align-items:baseline;font-weight:600;position:relative;flex-wrap:wrap;gap:4px 12px}
 .sum b{font-family:var(--display);font-size:22px;font-weight:800}
 .cta{position:relative;border:0;background:linear-gradient(150deg,var(--accent),var(--accent-2));color:#fff;border-radius:999px;padding:12px 18px;font-weight:700;font-size:15px;box-shadow:0 8px 24px color-mix(in srgb,var(--accent) 40%,transparent),inset 0 1px 0 rgba(255,255,255,.4)}
 .cta:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
@@ -351,6 +351,58 @@ td.r,th.r{text-align:right}
 @media (prefers-reduced-motion:reduce){.skeleton{animation:none}}
 footer.wrap{padding-block:0 120px;color:var(--muted);font-size:12px}
 footer p{max-width:70ch}
+/* games hub */
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,158px),1fr));gap:12px}
+.tile{position:relative;border-radius:var(--r-lg);padding:16px 14px;display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;min-height:138px;color:inherit}
+.tile>*{position:relative}
+.tile b{font-family:var(--display);font-size:17px;font-weight:800;letter-spacing:-.01em}
+.tile small{color:var(--muted);font-size:12px;line-height:1.35}
+.tile .pill{position:absolute;top:12px;right:12px}
+.game-ic{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;font-size:24px;background:var(--glass-strong);border:1px solid var(--glass-edge);box-shadow:inset 0 1px 0 var(--hl),0 4px 12px rgba(0,0,0,.08)}
+.game-h{display:flex;align-items:center;gap:12px}
+.game-open{gap:14px}
+/* loto */
+.loto{display:flex;flex-direction:column;gap:6px}
+.lrow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-radius:14px;background:var(--glass);border:1px solid var(--glass-edge)}
+.lteams{font-weight:600;min-width:0;overflow-wrap:anywhere}
+.lbtns{display:flex;gap:5px;flex:none}
+.lb{width:38px;height:36px;border-radius:11px;border:1px solid var(--glass-edge);background:var(--glass-strong);font-weight:800;font-family:var(--display)}
+.lb[aria-pressed="true"]{background:linear-gradient(150deg,var(--accent),var(--accent-2));color:#fff;border-color:transparent}
+.lpick{width:34px;height:30px;border-radius:10px;display:grid;place-items:center;font-weight:800;background:var(--faint)}
+.lpick.won,.lpick.void{background:var(--win);color:#fff}.lpick.lost{background:var(--loss);color:#fff}
+/* rocket */
+.rocket{position:relative;border-radius:var(--r-lg);overflow:hidden;background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 14%,transparent),transparent);border:1px solid var(--glass-edge)}
+.rocket canvas{display:block;width:100%;height:auto;aspect-ratio:2/1}
+.rk-mult{position:absolute;left:16px;top:10px;font-family:var(--display);font-size:42px;font-weight:900;letter-spacing:-.03em}
+/* hi-lo */
+.hl-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hl-card{border-radius:20px;padding:16px 12px;min-height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;background:var(--glass-strong);border:1px solid var(--glass-edge);box-shadow:inset 0 1px 0 var(--hl),var(--shadow)}
+.hl-card b{font-family:var(--display);font-size:40px;font-weight:900;letter-spacing:-.03em}
+.hl-card small{color:var(--muted);font-size:11px}
+.hl-card span{font-size:12px;font-weight:600}
+.hl-card.hidden{background:linear-gradient(150deg,var(--accent),var(--accent-2));color:#fff}
+.hl-card.hidden small{color:rgba(255,255,255,.8)}
+.hl-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hl-btns small{opacity:.85;margin-left:4px}
+/* quiz */
+.quiz{display:flex;flex-direction:column;gap:12px}
+.quiz h3{font-size:20px;line-height:1.25}
+.qopts{display:grid;gap:8px}
+.qopt{text-align:left;border:1px solid var(--glass-edge);background:var(--glass-strong);border-radius:16px;padding:12px 14px;font-weight:600}
+.qopt.good{background:var(--win);color:#fff;border-color:transparent}
+.qopt.bad{background:var(--loss);color:#fff;border-color:transparent}
+.qopt:disabled{opacity:1}
+/* scratch */
+.scratch{position:relative;width:min(300px,100%);aspect-ratio:1;margin:0 auto;border-radius:22px;overflow:hidden;box-shadow:var(--shadow)}
+.sc-grid{position:absolute;inset:0;display:grid;grid-template-columns:repeat(3,1fr);background:linear-gradient(150deg,#FFF6E0,#FFE1EC)}
+.sc-grid span{display:grid;place-items:center;font-size:42px;border:1px dashed rgba(0,0,0,.08)}
+.scratch canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
+/* juggle */
+.juggle{position:relative;width:min(360px,100%);margin:0 auto;border-radius:22px;overflow:hidden;background:linear-gradient(180deg,#8EC5FF 0%,#C7E3FF 70%);box-shadow:var(--shadow)}
+.juggle canvas{display:block;width:100%;height:auto;aspect-ratio:3/4;touch-action:none}
+.jg-hud{position:absolute;top:10px;left:0;right:0;text-align:center;font-family:var(--display);font-size:46px;font-weight:900;color:#fff;text-shadow:0 3px 10px rgba(0,0,0,.25);pointer-events:none}
+.chat-global .msgs{max-height:60vh}
+
 </style>
 <style>
 html,body{margin:0}
@@ -386,9 +438,9 @@ img{max-width:100%}
 <nav class="tabbar glass" role="tablist" id="tabs" aria-label="Navigation">
   <button role="tab" data-v="matchs" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7l4 3-1.5 4.5h-5L8 10z"/><path d="M12 3v4M16 10l4.5-1.5M14.5 14.5l2.5 4M9.5 14.5L7 18.5M8 10L3.5 8.5"/></svg>Matchs</button>
   <button role="tab" data-v="paris" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 000 4v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2a2 2 0 000-4z"/><path d="M14 5v12" stroke-dasharray="2 2"/></svg>Mes paris</button>
-  <button role="tab" data-v="groupes" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c.6-3.2 3-5 6-5s5.4 1.8 6 5"/><circle cx="17" cy="9" r="2.5"/><path d="M16.5 14c2.4.2 4 1.7 4.5 4.5"/></svg>Groupes<span class="badge num" id="gBadge" hidden></span></button>
+  <button role="tab" data-v="groupes" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c.6-3.2 3-5 6-5s5.4 1.8 6 5"/><circle cx="17" cy="9" r="2.5"/><path d="M16.5 14c2.4.2 4 1.7 4.5 4.5"/></svg>Social<span class="badge num" id="gBadge" hidden></span></button>
   <button role="tab" data-v="classement" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 01-10 0z"/><path d="M7 6H4.5a2.5 2.5 0 002.8 3.5M17 6h2.5a2.5 2.5 0 01-2.8 3.5"/></svg>Classement</button>
-  <button role="tab" data-v="jeux" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="7" width="19" height="11" rx="5.5"/><path d="M7.5 10.5v4M5.5 12.5h4"/><circle cx="15.5" cy="11.5" r=".9" fill="currentColor"/><circle cx="17.5" cy="13.8" r=".9" fill="currentColor"/></svg>Mini-jeux</button>
+  <button role="tab" data-v="jeux" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="7" width="19" height="11" rx="5.5"/><path d="M7.5 10.5v4M5.5 12.5h4"/><circle cx="15.5" cy="11.5" r=".9" fill="currentColor"/><circle cx="17.5" cy="13.8" r=".9" fill="currentColor"/></svg>Mini-jeux<span class="badge num" id="jBadge" hidden></span></button>
 </nav>
 <div class="toast glass" id="toast" hidden></div>
 <div class="welcome" id="welcome" hidden></div>
@@ -397,6 +449,7 @@ img{max-width:100%}
 <script src="js/store.js"></script>
 <script src="js/install.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/games.js"></script>
 <script src="js/app.js"></script>
 <script>
 if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{})})}

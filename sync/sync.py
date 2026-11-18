@@ -115,6 +115,18 @@ def market_probs(lh, la):
         k = str(t).replace(".", "")
         p["O" + k] = P(lambda i, j: i + j > t)
         p["U" + k] = 1 - p["O" + k]
+    # extra markets
+    p["HC1"] = P(lambda i, j: i - j >= 2)          # home wins by 2+
+    p["HC2"] = P(lambda i, j: j - i >= 2)          # away wins by 2+
+    p["HO05"] = P(lambda i, j: i >= 1); p["HO15"] = P(lambda i, j: i >= 2)
+    p["AO05"] = P(lambda i, j: j >= 1); p["AO15"] = P(lambda i, j: j >= 2)
+    p["W1N"] = P(lambda i, j: i > j and j == 0)    # home wins to nil
+    p["W2N"] = P(lambda i, j: j > i and i == 0)
+    p["1BY"] = P(lambda i, j: i > j and j > 0); p["XBY"] = P(lambda i, j: i == j and i > 0); p["2BY"] = P(lambda i, j: j > i and i > 0)
+    for n in range(4):
+        p["TG%d" % n] = P(lambda i, j, n=n: i + j == n)
+    p["TG4"] = P(lambda i, j: i + j >= 4)
+    p["ODD"] = P(lambda i, j: (i + j) % 2 == 1); p["EVEN"] = 1 - p["ODD"]
     cs = {}
     for i in range(5):
         for j in range(5):

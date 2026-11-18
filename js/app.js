@@ -21,13 +21,19 @@ const today=()=>parisDay(Date.now());
 function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
 function crest(name,cls=""){const h=hash(name)%360;const ini=name.replace(/^(FC|AS|AC|SS|US|RC|OGC|SC|VfB|VfL|TSG|1\.|RCD|CA|CD|SL|SK|FK|NK|AFC|Real|Racing|Stade|Club|Olympique)\s+/i,"").replace(/[^A-Za-zÀ-ÿ ]/g,"").trim().split(/\s+/).map(w=>w[0]).join("").slice(0,2).toUpperCase();return`<i class="crest ${cls}" style="background:radial-gradient(circle at 32% 26%,hsl(${h} 75% 64%),hsl(${h} 62% 34%) 72%)" aria-hidden="true">${esc(ini||"?")}</i>`}
 const short=n=>{const p=String(n).split(" ");return p.length>1?p.slice(-1)[0]:n};
-const NICK={"Paris Saint-Germain FC":"PSG","Olympique de Marseille":"OM","Olympique Lyonnais":"OL","Manchester City FC":"Man City","Manchester United FC":"Man Utd","FC Internazionale Milano":"Inter","Club Atlético de Madrid":"Atlético","FC Bayern München":"Bayern","Real Madrid CF":"Real Madrid","FC Barcelona":"Barça","Borussia Dortmund":"Dortmund","Borussia Mönchengladbach":"Gladbach","Bayer 04 Leverkusen":"Leverkusen","Tottenham Hotspur FC":"Tottenham","Brighton & Hove Albion FC":"Brighton","Real Betis Balompié":"Betis","Real Sociedad de Fútbol":"Real Sociedad","Racing Club de Lens":"Lens","Stade Rennais FC 1901":"Rennes","RC Strasbourg Alsace":"Strasbourg","Stade Brestois 29":"Brest","AS Monaco FC":"Monaco","Aston Villa FC":"Aston Villa","Newcastle United FC":"Newcastle","Nottingham Forest FC":"Forest","Crystal Palace FC":"Palace","Rayo Vallecano de Madrid":"Rayo","RCD Espanyol de Barcelona":"Espanyol","RC Deportivo La Coruña":"Deportivo","Real Racing Club de Santander":"Racing","Eintracht Frankfurt":"Francfort","TSG 1899 Hoffenheim":"Hoffenheim","SV Werder Bremen":"Brême","1. FC Union Berlin":"Union Berlin","Hamburger SV":"Hambourg","SC Paderborn 07":"Paderborn","SV 07 Elversberg":"Elversberg","Paris FC":"Paris FC"};
+const NICK={"Paris Saint-Germain FC":"PSG","Olympique de Marseille":"OM","Olympique Lyonnais":"OL","Manchester City FC":"Man City","Manchester United FC":"Man Utd","FC Internazionale Milano":"Inter","Club Atlético de Madrid":"Atlético","FC Bayern München":"Bayern","Real Madrid CF":"Real Madrid","FC Barcelona":"Barça","Borussia Dortmund":"Dortmund","Borussia Mönchengladbach":"Gladbach","Bayer 04 Leverkusen":"Leverkusen","Tottenham Hotspur FC":"Tottenham","Brighton & Hove Albion FC":"Brighton","Real Betis Balompié":"Betis","Real Sociedad de Fútbol":"Real Sociedad","Racing Club de Lens":"Lens","Stade Rennais FC 1901":"Rennes","RC Strasbourg Alsace":"Strasbourg","Stade Brestois 29":"Brest","AS Monaco FC":"Monaco","Aston Villa FC":"Aston Villa","Newcastle United FC":"Newcastle","Nottingham Forest FC":"Forest","Crystal Palace FC":"Palace","Rayo Vallecano de Madrid":"Rayo","RCD Espanyol de Barcelona":"Espanyol","RC Deportivo La Coruña":"Deportivo","Real Racing Club de Santander":"Racing","Eintracht Frankfurt":"Francfort","TSG 1899 Hoffenheim":"Hoffenheim","SV Werder Bremen":"Brême","1. FC Union Berlin":"Union Berlin","Hamburger SV":"Hambourg","SC Paderborn 07":"Paderborn","SV 07 Elversberg":"Elversberg","Paris FC":"Paris FC","Lille OSC":"Lille","Le Havre AC":"Le Havre","Le Mans FC":"Le Mans","Angers SCO":"Angers","Coventry City FC":"Coventry","Hull City AFC":"Hull","Ipswich Town FC":"Ipswich","Leeds United FC":"Leeds","RC Celta de Vigo":"Celta","Sevilla FC":"Séville","West Ham United FC":"West Ham","Wolverhampton Wanderers FC":"Wolves","Club Brugge":"Bruges","Bodø/Glimt":"Bodø"};
 const STRIP=/^(FC|CF|AFC|SC|AC|AS|SSC|BC|CFC|FK|SK|US|SS|OGC|RC|RCD|CA|UD|VfB|VfL|1\.|Calcio|Club|de|del|\d+)$/i;
 const tshort=n=>{if(NICK[n])return NICK[n];const p=String(n).split(" ").filter(w=>!STRIP.test(w));return p.length?p[p.length-1]:n};
 
+const MK2={"HO05":"Dom. marque","HO15":"Dom. +1,5 buts","AO05":"Ext. marque","AO15":"Ext. +1,5 buts","TG0":"0 but","TG1":"1 but","TG2":"2 buts","TG3":"3 buts","TG4":"4 buts ou +","ODD":"Total impair","EVEN":"Total pair"};
 const MK={"1":"1","X":"N","2":"2","1X":"1 ou N","12":"1 ou 2","X2":"N ou 2","O15":"+1,5 buts","U15":"−1,5 buts","O25":"+2,5 buts","U25":"−2,5 buts","O35":"+3,5 buts","U35":"−3,5 buts","BY":"Les 2 marquent","BN":"Pas les 2"};
 function pickLabel(m,k){
   if(k==="1")return"Victoire "+m.h; if(k==="2")return"Victoire "+m.a; if(k==="X")return"Match nul";
+  if(k==="HC1")return m.h+" gagne de 2 buts ou +"; if(k==="HC2")return m.a+" gagne de 2 buts ou +";
+  if(k==="W1N")return m.h+" gagne sans encaisser"; if(k==="W2N")return m.a+" gagne sans encaisser";
+  if(k==="1BY")return m.h+" gagne et les 2 marquent"; if(k==="2BY")return m.a+" gagne et les 2 marquent"; if(k==="XBY")return"Nul et les 2 marquent";
+  if(k==="HO05")return m.h+" marque"; if(k==="HO15")return m.h+" marque 2 buts ou +"; if(k==="AO05")return m.a+" marque"; if(k==="AO15")return m.a+" marque 2 buts ou +";
+  if(MK2[k])return MK2[k]+" dans le match";
   if(k==="1X")return m.h+" ou nul"; if(k==="X2")return"Nul ou "+m.a; if(k==="12")return"Pas de nul";
   if(k.startsWith("CS:"))return"Score exact "+k.slice(3); if(k.startsWith("SC:"))return k.slice(5)+" marque"; if(k.startsWith("PD:"))return k.slice(5)+" fait une passe décisive";
   return MK[k]||k;
@@ -43,7 +49,7 @@ function legResult(k,m){
     if(!list||(!list.length&&k.startsWith("SC:"))){return (Date.now()-m.k>3*86400000)?"void":null}
     return list.some(e=>!e.og&&e.t===side&&pnorm(e.n)===name)?"won":"lost";
   }
-  const t=h+a,r={"1":h>a,"X":h===a,"2":h<a,"1X":h>=a,"12":h!==a,"X2":h<=a,"O15":t>1.5,"U15":t<1.5,"O25":t>2.5,"U25":t<2.5,"O35":t>3.5,"U35":t<3.5,"BY":h>0&&a>0,"BN":!(h>0&&a>0)}[k];
+  const t=h+a,r={"HC1":h-a>=2,"HC2":a-h>=2,"HO05":h>=1,"HO15":h>=2,"AO05":a>=1,"AO15":a>=2,"W1N":h>a&&a===0,"W2N":a>h&&h===0,"1BY":h>a&&a>0,"XBY":h===a&&h>0,"2BY":a>h&&h>0,"TG0":t===0,"TG1":t===1,"TG2":t===2,"TG3":t===3,"TG4":t>=4,"ODD":t%2===1,"EVEN":t%2===0,"1":h>a,"X":h===a,"2":h<a,"1X":h>=a,"12":h!==a,"X2":h<=a,"O15":t>1.5,"U15":t<1.5,"O25":t>2.5,"U25":t<2.5,"O35":t>3.5,"U35":t<3.5,"BY":h>0&&a>0,"BN":!(h>0&&a>0)}[k];
   return r===undefined?"void":r?"won":"lost";
 }
 const pnorm=n=>String(n||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z ]/g," ").trim().split(/\s+/).pop();
@@ -126,6 +132,8 @@ function settle(){
     if(m.st!=="FT"||!m.sc)return;
     p.settled=true;p.won=m.sc[0]===p.h&&m.sc[1]===p.a;if(p.won){S.me.balance+=SCORE_BONUS;gain+=SCORE_BONUS}changed=true;
   });
+  const lg=GAMES?GAMES.settle():0;
+  if(lg){changed=true;if(lg>=1){gain+=lg;toast("Loto Foot 7 : +"+lg+" pts !")}}
   if(changed){save();if(gain)toast("Paris réglés : +"+gain+" pts");}
   return changed;
 }
@@ -221,6 +229,13 @@ function renderSheet(){
       mk("Double chance",[["1X","1 ou N"],["12","1 ou 2"],["X2","N ou 2"]])+
       mk("Nombre de buts",[["O15","+1,5"],["U15","−1,5"],["O25","+2,5"],["U25","−2,5"],["O35","+3,5"],["U35","−3,5"]])+
       mk("Les deux équipes marquent",[["BY","Oui"],["BN","Non"]])+
+      mk("Résultat + les 2 marquent",[["1BY",tshort(m.h)+" & oui"],["XBY","Nul & oui"],["2BY",tshort(m.a)+" & oui"]])+
+      mk("Handicap (victoire de 2 buts ou +)",[["HC1",tshort(m.h)+" −1,5"],["HC2",tshort(m.a)+" −1,5"]])+
+      mk("Gagne sans encaisser",[["W1N",tshort(m.h)],["W2N",tshort(m.a)]])+
+      mk("Buts de "+tshort(m.h),[["HO05","Marque"],["HO15","2 buts ou +"]])+
+      mk("Buts de "+tshort(m.a),[["AO05","Marque"],["AO15","2 buts ou +"]])+
+      mk("Nombre exact de buts",[["TG0","0"],["TG1","1"],["TG2","2"],["TG3","3"],["TG4","4 ou +"]])+
+      mk("Total pair ou impair",[["EVEN","Pair"],["ODD","Impair"]])+
       mk("Score exact",Object.keys((m.odds||{}).CS||{}).sort().map(s=>["CS:"+s,s]),"cs")+
       `<p class="note">${src}</p>`;
   }else if(S.sheetTab==="buteurs"){
@@ -295,7 +310,7 @@ function betCard(b){
   const lab={pending:"En cours",won:"Gagné",lost:"Perdu",void:"Remboursé"}[b.status];
   return`<div class="glass panel bet"><div class="bet-h"><strong>${b.legs.length>1?"Combiné × "+b.legs.length:"Simple"}</strong><span class="st ${b.status}">${lab}</span></div>${legs}
   <div class="bet-f"><span>Mise <b class="num">${b.stake} pts</b> · cote <b class="num">${b.odds.toFixed(2)}</b></span><span>${b.status==="won"?"Gain <b class='num'>+"+b.payout+" pts</b>":b.status==="pending"?"Gain potentiel <b class='num'>"+Math.floor(b.stake*b.odds)+" pts</b>":b.status==="void"?"Mise rendue":"—"}</span>
-  ${S.mode==="cloud"&&S.me.groups.length?`<button class="linkbtn" data-share="${b.id}">Partager dans ${esc((S.groupsMeta[S.activeGroup||S.me.groups[0]]||{}).name||"mon groupe")}</button>`:""}</div></div>`;
+  ${S.mode==="cloud"?`<span style="display:flex;gap:14px;flex-wrap:wrap"><button class="linkbtn" data-gshare="${b.id}">Partager à tous</button>${S.me.groups.length?`<button class="linkbtn" data-share="${b.id}">Partager dans ${esc((S.groupsMeta[S.activeGroup||S.me.groups[0]]||{}).name||"mon groupe")}</button>`:""}</span>`:""}</div></div>`;
 }
 function donateCard(){
   const url=(window.VPRONO_CONFIG||{}).donateUrl;if(!url||!/^https:\/\//.test(url))return"";
@@ -317,20 +332,49 @@ function renderParis(){
 /* ---------- Groups + chat ---------- */
 function nameOf(uid){const p=S.members.find(x=>x.uid===uid);return(p&&p.pseudo)||S.names[uid]||"Joueur"}
 const fMsg=new Intl.DateTimeFormat("fr-FR",{weekday:"short",hour:"2-digit",minute:"2-digit",timeZone:tz});
+function msgHtml(x,name){
+  const mine=x.u===S.uid,who=`<span class="who">${esc(name)}<span class="when">${x.ts?esc(fMsg.format(x.ts)):""}</span></span>`;
+  if(x.kind==="bet"&&x.bet){const b=x.bet;return`<div class="msg ticket${mine?" mine":""}">${who}🎟️ Ticket ${b.n>1?"combiné × "+esc(b.n):"simple"} · ${Number(b.stake)||0} pts à <b>${Number(b.odds||0).toFixed(2)}</b><ul>${(b.legs||[]).slice(0,10).map(l=>`<li>${esc(l)}</li>`).join("")}</ul></div>`}
+  return`<div class="msg${mine?" mine":""}">${who}${esc(x.t)}</div>`;
+}
+function fillChat(box,list,nameFn,jumpKey){
+  if(!box)return;const atBottom=box.scrollHeight-box.scrollTop-box.clientHeight<40;
+  box.innerHTML=list.length?list.map(x=>msgHtml(x,nameFn(x))).join(""):`<p class="empty">Aucun message. Lance la discussion !</p>`;
+  if(atBottom||S[jumpKey]){box.scrollTop=box.scrollHeight;S[jumpKey]=false}
+}
 function renderChat(){
-  const box=$("#msgs");if(!box)return;
-  const atBottom=box.scrollHeight-box.scrollTop-box.clientHeight<40;
-  box.innerHTML=S.messages.length?S.messages.map(x=>{
-    const mine=x.u===S.uid,who=`<span class="who">${esc(nameOf(x.u))}<span class="when">${x.ts?esc(fMsg.format(x.ts)):""}</span></span>`;
-    if(x.kind==="bet"&&x.bet){const b=x.bet;return`<div class="msg ticket${mine?" mine":""}">${who}🎟️ Ticket ${b.n>1?"combiné × "+b.n:"simple"} · ${Number(b.stake)||0} pts à <b>${Number(b.odds||0).toFixed(2)}</b><ul>${(b.legs||[]).slice(0,10).map(l=>`<li>${esc(l)}</li>`).join("")}</ul></div>`}
-    return`<div class="msg${mine?" mine":""}">${who}${esc(x.t)}</div>`}).join(""):`<p class="empty">Aucun message. Lance la discussion !</p>`;
-  if(atBottom||S.chatJump){box.scrollTop=box.scrollHeight;S.chatJump=false}
+  fillChat($("#msgs"),S.messages,x=>nameOf(x.u),"chatJump");
+  fillChat($("#gmsgs"),S.gmsgs||[],x=>(x.u===S.uid?(S.me.pseudo||x.p):x.p)||"Joueur","gJump");
+}
+function watchGlobal(){
+  if(S.gUnsub||!S.db)return;let first=true;
+  S.gUnsub=S.db.collection("global/messages").orderBy("ts","desc").limit(80).onSnapshot(snap=>{
+    const prev=(S.gmsgs||[]).length,lastTs=prev?S.gmsgs[prev-1].ts:0;
+    S.gmsgs=snap.docs.map(d=>d.data()).reverse();
+    const fresh=S.gmsgs.filter(m=>m.ts>lastTs&&m.u!==S.uid).length;
+    if(!first&&fresh&&!(S.view==="groupes"&&S.social==="global")){S.unread+=fresh;renderTabs()}
+    first=false;renderChat();
+  },()=>{});
+}
+async function sendGlobal(data){
+  if(!S.canWrite)return false;
+  if(!S.me.pseudo){toast("Choisis d'abord un pseudo dans « Mes paris ».");return false}
+  try{await S.db.collection("global/messages").add(Object.assign({u:S.uid,p:S.me.pseudo,ts:Date.now()},data));S.gJump=true;return true}
+  catch(e){toast("Message non envoyé, réessaie.");return false}
 }
 function renderGroupes(){
   const v=$("#v-groupes");
   if(S.mode!=="cloud"){v.innerHTML=`<div><h2>Groupes</h2></div><div class="glass panel empty">${S.mode==="loading"?"Connexion…":"Connecte-toi pour jouer avec tes amis."}</div>`;return}
   const g=S.activeGroup,meta=g&&S.groupsMeta[g];
-  let h=`<div><h2>Groupes</h2><p class="sub">Crée un groupe, partage son code, affrontez-vous au classement et chambrez-vous dans le chat.</p></div>
+  const soc=S.social||"global";
+  const head=`<div><h2>Social</h2><p class="sub">Discute avec tous les joueurs de Vprono, ou affronte tes potes dans vos groupes.</p></div>
+  <div class="seg glass"><button data-social="global" aria-pressed="${soc==="global"}">🌍 Chat général</button><button data-social="groups" aria-pressed="${soc==="groups"}">👥 Mes groupes</button></div>`;
+  if(soc==="global"){
+    v.innerHTML=head+`<div class="glass panel chat chat-global"><div class="row-between"><h3>Tous les joueurs</h3><span class="note">Reste cool : pas d'insultes, pas de pub.</span></div><div class="msgs" id="gmsgs"></div>
+      <form class="form" id="gChatForm"><input id="gChatIn" maxlength="${MSG_MAX}" placeholder="${S.me.pseudo?"Message à tout le monde…":"Choisis un pseudo pour écrire"}" autocomplete="off" value="${esc(S.gDraft||"")}"><button class="cta" ${S.canWrite?"":"disabled"}>Envoyer</button></form></div>`;
+    S.gJump=true;renderChat();return;
+  }
+  let h=head+`
   <div class="grid2"><div class="glass panel"><h3>Créer un groupe</h3><div class="form" style="margin-top:8px"><input id="gName" maxlength="32" placeholder="ex. Les potes du foot"><button class="cta" id="gCreate" ${S.canWrite?"":"disabled"}>Créer</button></div></div>
   <div class="glass panel"><h3>Rejoindre</h3><div class="form" style="margin-top:8px"><input id="gCode" maxlength="6" placeholder="Code à 6 caractères" style="text-transform:uppercase"><button class="ghost" id="gJoin" ${S.canWrite?"":"disabled"}>Rejoindre</button></div></div></div>`;
   if(!S.me.groups.length){v.innerHTML=h+`<div class="glass panel empty">Tu n'es dans aucun groupe pour l'instant.</div>`;return}
@@ -395,35 +439,59 @@ function featured(){
   const rank=m=>(m.l==="CL"?0:10)+Math.abs((m.odds?m.odds["1"]:3)-(m.odds?m.odds["2"]:3));
   const m=pool.slice().sort((a,b)=>rank(a)-rank(b))[0];return{m,d};
 }
-function renderJeux(){
-  const spun=S.me.lastSpin===today(),F=featured(),f=F&&F.m,fph=f&&phase(f),pk=f&&S.me.picks[f.id];
-  const broke=S.me.balance<1&&!S.me.bets.some(b=>b.status==="pending"),rescued=S.me.lastRescue===today();
+const CLASSIC=[
+  {id:"wheel",title:"La roue du jour",icon:"🎡",desc:"Un tour gratuit par jour",daily:()=>S.me.lastSpin!==today()},
+  {id:"pen",title:"Tirs au but",icon:"🥅",desc:"5 tirs, jusqu'à ×3 ta mise"},
+  {id:"exact",title:"Score exact",icon:"🎯",desc:"Trouve le score de l'affiche : +"+SCORE_BONUS+" pts",daily:()=>{const F=featured();return !!(F&&phase(F.m)==="open"&&!S.me.picks[F.m.id])}}];
+function allGames(){return CLASSIC.concat(GAMES?GAMES.list:[])}
+function dailyCount(){return allGames().filter(g=>g.daily&&g.daily()).length}
+function classicHtml(id){
   const seg=360/WHEEL.length,P=S.pen;
-  $("#v-jeux").innerHTML=`<div><h2>Mini-jeux</h2><p class="sub">Pour gagner des points autrement qu'en pariant.</p></div>
-  ${broke?`<div class="glass panel"><h3>Plus de points ?</h3><p class="sub">Ça arrive aux meilleurs. Reprends 20 pts une fois par jour.</p><button class="cta" id="rescue" style="margin-top:8px" ${rescued?"disabled":""}>${rescued?"Reviens demain":"Récupérer 20 pts"}</button></div>`:""}
-  <div class="games">
-   <div class="glass panel game"><h3>La roue du jour</h3><p class="sub">Un tour gratuit par jour.</p>
+  if(id==="wheel"){const spun=S.me.lastSpin===today();return`<p class="sub">Un tour gratuit par jour : de 5 à 50 pts.</p>
     <div class="wheel-box"><div class="pointer"></div><div class="wheel" id="wheel" style="transform:rotate(${S.wheelRot}deg);background:conic-gradient(${WHEEL.map((v,i)=>WCOL[i]+" "+i*seg+"deg "+(i+1)*seg+"deg").join(",")})">
      ${WHEEL.map((v,i)=>`<span style="transform:rotate(${i*seg+seg/2-90}deg) translate(58px,-10px)">${v}</span>`).join("")}</div></div>
-    <button class="cta" id="spin" ${spun||S.wheelBusy||!S.canWrite?"disabled":""}>${spun?"Déjà tournée, reviens demain":"Tourner la roue"}</button></div>
-   <div class="glass panel game"><h3>Tirs au but</h3><p class="sub">5 tirs, choisis ton coin, le gardien plonge au hasard. 5/5 = ×3, 4/5 = ×1,2, 3/5 = ×0,5.</p>
+    <button class="cta" id="spin" ${spun||S.wheelBusy||!S.canWrite?"disabled":""}>${spun?"Déjà tournée, reviens demain":"Tourner la roue"}</button>`}
+  if(id==="pen")return`<p class="sub">5 tirs, choisis ton coin, le gardien plonge au hasard. 5/5 = ×3, 4/5 = ×1,2, 3/5 = ×0,5.</p>
     <div class="goal">${["Gauche","Centre","Droite"].map((c,i)=>`<button data-shot="${i}" ${P&&!P.done&&!P.busy?"":"disabled"}>${c}</button>`).join("")}<div class="keeper" style="left:${P&&P.kp!=null?P.kp*33.3:33.3}%">🧤</div></div>
     <div class="shots">${[0,1,2,3,4].map(i=>`<i class="${P&&P.shots[i]!=null?(P.shots[i]?"g":"m"):""}"></i>`).join("")}</div>
     <p class="gmsg">${P?esc(P.msg):"Mise des points puis tire."}</p>
-    ${!P||P.done?`<div class="stake"><input id="penStake" type="number" min="1" step="1" value="5" aria-label="Mise tirs au but"><button class="cta" id="penGo" ${S.canWrite?"":"disabled"}>Jouer</button></div>`:""}</div>
-   <div class="glass panel game"><h3>Score exact</h3><p class="sub">Trouve le score exact de l'affiche, c'est gratuit : +${SCORE_BONUS} pts si c'est juste.</p>
-    ${f?`<p style="text-align:center;font-weight:600;margin:0">${esc(f.h)} – ${esc(f.a)}<br><span class="note">${esc(LG[f.l].name)} · ${fph==="open"?(f.tbc?"date ":"coup d'envoi ")+esc(fDT.format(f.k)):"prono fermé"}</span></p>
+    ${!P||P.done?`<div class="stake"><input id="penStake" type="number" min="1" step="1" value="5" aria-label="Mise tirs au but"><button class="cta" id="penGo" ${S.canWrite?"":"disabled"}>Jouer</button></div>`:""}`;
+  if(id==="exact"){const F=featured(),f=F&&F.m,fph=f&&phase(f),pk=f&&S.me.picks[f.id];if(!f){loadUpcoming();return`<p class="empty">L'affiche arrive avec le calendrier.</p>`}
+    return`<p class="sub">Trouve le score exact de l'affiche, c'est gratuit : +${SCORE_BONUS} pts si c'est juste.</p>
+    <p style="text-align:center;font-weight:600;margin:0">${esc(f.h)} – ${esc(f.a)}<br><span class="note">${esc(LG[f.l].name)} · ${fph==="open"?(f.tbc?"date ":"coup d'envoi ")+esc(fDT.format(f.k)):"prono fermé"}</span></p>
     <div class="pick"><input id="ph" type="number" min="0" max="15" value="${pk?pk.h:""}" aria-label="Buts ${esc(f.h)}" ${fph!=="open"?"disabled":""}><b>–</b><input id="pa" type="number" min="0" max="15" value="${pk?pk.a:""}" aria-label="Buts ${esc(f.a)}" ${fph!=="open"?"disabled":""}></div>
     <button class="ghost" id="savePick" ${fph!=="open"||!S.canWrite?"disabled":""}>${pk?"Modifier mon prono":"Valider mon prono"}</button>
-    ${pk&&pk.settled?`<p class="gmsg">${pk.won?"Bien vu ! +"+SCORE_BONUS+" pts":"Raté cette fois."}</p>`:""}`:`<p class="empty">L'affiche arrive avec le calendrier.</p>`}</div>
-  </div>`;
+    ${pk&&pk.settled?`<p class="gmsg">${pk.won?"Bien vu ! +"+SCORE_BONUS+" pts":"Raté cette fois."}</p>`:""}`}
+  return"";
 }
+let upcomingLoading=false;
+function loadUpcoming(){
+  if(upcomingLoading||!S.db||!S.meta)return;upcomingLoading=true;
+  const ds=dayList().filter(d=>d>=today()).slice(0,5);
+  loadDays(ds).then(()=>{upcomingLoading=false;if(S.view==="jeux")renderJeux()});
+}
+function renderJeux(){
+  const v=$("#v-jeux");
+  const broke=S.me.balance<1&&!S.me.bets.some(b=>b.status==="pending"),rescued=S.me.lastRescue===today();
+  const rescue=broke?`<div class="glass panel"><h3>Plus de points ?</h3><p class="sub">Ça arrive aux meilleurs. Reprends 20 pts une fois par jour.</p><button class="cta" id="rescue" style="margin-top:8px" ${rescued?"disabled":""}>${rescued?"Reviens demain":"Récupérer 20 pts"}</button></div>`:"";
+  if(S.gameId){
+    const g=allGames().find(x=>x.id===S.gameId);
+    const body=CLASSIC.some(x=>x.id===S.gameId)?classicHtml(S.gameId):(GAMES?GAMES.render(S.gameId):"");
+    v.innerHTML=`<button class="back" data-game-back>‹ Tous les jeux</button>${rescue}<div class="glass panel game game-open"><div class="game-h"><span class="game-ic" aria-hidden="true">${g?g.icon:""}</span><h2>${esc(g?g.title:"")}</h2></div>${body}</div>`;
+    if(GAMES)GAMES.mount(S.gameId);
+    return;
+  }
+  const n=dailyCount();
+  v.innerHTML=`<div><h2>Mini-jeux</h2><p class="sub">${n?`<b>${n}</b> jeu${n>1?"x":""} gratuit${n>1?"s":""} à faire aujourd'hui.`:"Tous tes bonus du jour sont faits. Reviens demain !"}</p></div>${rescue}
+  <div class="tiles">${allGames().map(g=>{const free=g.daily&&g.daily();return`<button class="tile glass" data-game="${g.id}"><span class="game-ic" aria-hidden="true">${g.icon}</span><b>${esc(g.title)}</b><small>${esc(g.desc)}</small>${free?`<span class="pill star">Dispo</span>`:""}</button>`}).join("")}</div>`;
+}
+function openGame(id){if(GAMES)GAMES.unmount();S.gameId=id;renderJeux();const v=$("#v-jeux");v.classList.remove("enter");void v.offsetWidth;v.classList.add("enter");window.scrollTo({top:0})}
 function spin(){
   if(S.me.lastSpin===today()||S.wheelBusy)return;
   const i=Math.floor(Math.random()*WHEEL.length),seg=360/WHEEL.length;
   S.wheelBusy=true;S.me.lastSpin=today();
   S.wheelRot=S.wheelRot-(S.wheelRot%360)+360*5+(360-(i*seg+seg/2));
-  $("#wheel").style.transform=`rotate(${S.wheelRot}deg)`;$("#spin").disabled=true;
+  const wh=$("#wheel");if(wh)wh.style.transform=`rotate(${S.wheelRot}deg)`;const sb=$("#spin");if(sb)sb.disabled=true;
   const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
   setTimeout(()=>{S.wheelBusy=false;S.me.balance+=WHEEL[i];save();toast("+"+WHEEL[i]+" pts gagnés à la roue !");renderAll()},reduce?100:4100);
 }
@@ -443,8 +511,14 @@ function penShot(c){
     else renderJeux();},700);
 }
 
+/* ---------- Games module ---------- */
+const GAMES=window.VPGames?window.VPGames({S,esc,today,save,toast,
+  rerender:()=>{if(S.view==="jeux")renderJeux();renderHeader();renderTabs()},
+  bumpBalance:()=>renderHeader(),
+  dayList,findMatch,phase,legResult,pickLabel,tshort,fDT,loadUpcoming}):null;
+
 /* ---------- Glue ---------- */
-function renderTabs(){const b=$("#gBadge");b.hidden=!S.unread;b.textContent=S.unread}
+function renderTabs(){const b=$("#gBadge");b.hidden=!S.unread;b.textContent=S.unread;const j=$("#jBadge");if(j){const n=S.mode==="cloud"?dailyCount():0;j.hidden=!n;j.textContent=n}}
 let lastBal=null;
 function renderHeader(){const el=$("#bal");if(lastBal!==null&&lastBal!==S.me.balance){el.classList.remove("bump");void el.offsetWidth;el.classList.add("bump")}lastBal=S.me.balance;el.innerHTML=S.me.balance+"<span>pts</span>";$("#who").textContent=S.mode==="cloud"?(S.me.pseudo||S.names[S.uid]||""):S.mode==="loading"?"Chargement…":"Hors connexion"}
 function avatar(uid,label,cls){const h=hash(uid||"x")%360;return`<i class="${cls}" style="background:radial-gradient(circle at 32% 26%,hsl(${h} 75% 64%),hsl(${h} 62% 36%) 72%)" aria-hidden="true">${esc((label||"?").trim().slice(0,1).toUpperCase())}</i>`}
@@ -490,12 +564,13 @@ function renderWelcome(){
   setTimeout(()=>{const i=$("#wPseudo");if(i)i.focus()},50);
 }
 function renderAll(){renderHeader();renderTabs();renderMatchs();renderSlip();renderParis();renderGroupes();renderJeux();renderClassement();renderWelcome()}
-function setView(v){const changed=S.view!==v;S.view=v;S.slipOpen=false;if(v==="groupes"){S.unread=0;renderTabs();S.chatJump=true;renderChat()}document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===v));if(v==="classement"){watchLeaderboard();renderClassement()}["matchs","paris","groupes","jeux","classement"].forEach(x=>{const el=$("#v-"+x);el.hidden=x!==v;if(x===v&&changed){el.classList.remove("enter");void el.offsetWidth;el.classList.add("enter")}});$("#slip").hidden=v!=="matchs"&&!S.slip.length;renderSlip();window.scrollTo({top:0});if(v==="jeux")renderJeux();if(v==="paris")renderParis()}
+function setView(v){const changed=S.view!==v;if(changed&&S.view==="jeux"&&GAMES){GAMES.unmount()}S.view=v;S.slipOpen=false;if(v==="groupes"){S.unread=0;renderTabs();S.chatJump=true;S.gJump=true;renderChat()}document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===v));if(v==="classement"){watchLeaderboard();renderClassement()}["matchs","paris","groupes","jeux","classement"].forEach(x=>{const el=$("#v-"+x);el.hidden=x!==v;if(x===v&&changed){el.classList.remove("enter");void el.offsetWidth;el.classList.add("enter")}});$("#slip").hidden=v!=="matchs"&&!S.slip.length;renderSlip();window.scrollTo({top:0});if(v==="jeux")renderJeux();if(v==="paris")renderParis()}
 function selectDay(d){S.day=d;S.detail=null;watchDay(d);renderMatchs()}
 
 $("#tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(b)setView(b.dataset.v)});
 document.addEventListener("submit",async e=>{
   if(e.target.id==="welcomeForm"){e.preventDefault();const v=$("#wPseudo").value.trim().slice(0,24);if(!v)return;S.me.pseudo=v;S.welcomeDone=true;await save();renderAll();toast("Bienvenue "+v+" ! Bons paris.");return}
+  if(e.target.id==="gChatForm"){e.preventDefault();const i=$("#gChatIn"),t=i.value.trim().slice(0,MSG_MAX);if(!t)return;i.value="";S.gDraft="";if(!await sendGlobal({t})){i.value=t;S.gDraft=t}return}
   if(e.target.id!=="chatForm")return;e.preventDefault();
   const i=$("#chatIn"),t=i.value.trim().slice(0,MSG_MAX);if(!t)return;
   i.value="";S.chatDraft="";if(!await sendMsg({t})){i.value=t;S.chatDraft=t}
@@ -504,6 +579,7 @@ $("#scrim").addEventListener("click",()=>{S.slipOpen=false;renderSlip()});
 window.addEventListener("resize",()=>renderSlip());
 document.addEventListener("click",async e=>{
   const t=e.target.closest("button,[id=slipToggle]");if(!t)return;
+  if(S.view==="jeux"){if(t.dataset.game){openGame(t.dataset.game);return}if(t.hasAttribute("data-game-back")){openGame(null);return}if(GAMES&&GAMES.click(t))return}
   if(t.dataset.day){selectDay(t.dataset.day)}
   else if(t.dataset.shift){const ds=visibleDays(),i=ds.indexOf(S.day)+Number(t.dataset.shift);if(ds[i])selectDay(ds[i])}
   else if(t.dataset.lg){S.league=t.dataset.lg;const ds=visibleDays();if(!ds.includes(S.day)){S.day=nearestDay(ds);watchDay(S.day)}renderMatchs()}
@@ -525,6 +601,8 @@ document.addEventListener("click",async e=>{
   else if(t.id==="gCreate")createGroup();
   else if(t.id==="gJoin")joinGroup();
   else if(t.dataset.g)openGroup(t.dataset.g);
+  else if(t.dataset.social){S.social=t.dataset.social;if(S.social==="global"){S.unread=0;renderTabs()}renderGroupes()}
+  else if(t.dataset.gshare){const b=S.me.bets.find(x=>x.id===t.dataset.gshare);if(!b)return;if(await sendGlobal({kind:"bet",bet:{n:b.legs.length,stake:b.stake,odds:b.odds,legs:b.legs.map(l=>(l.lbl||l.mk)+" · "+(l.mt||"")+" @"+l.odd.toFixed(2))}}))toast("Ticket partagé dans le chat général.")}
   else if(t.id==="copyCode"){const c=S.activeGroup;try{await navigator.clipboard.writeText(c);toast("Code copié : "+c)}catch(_){toast("Code du groupe : "+c)}}
   else if(t.id==="leave"){if(t.dataset.confirm){S.me.groups=S.me.groups.filter(c=>c!==S.activeGroup);await save();openGroup(S.me.groups[0]||null);toast("Tu as quitté le groupe.")}else{t.dataset.confirm="1";t.textContent="Confirmer ?"}}
   else if(t.id==="spin")spin();
@@ -535,6 +613,7 @@ document.addEventListener("click",async e=>{
 });
 document.addEventListener("input",e=>{
   if(e.target.id==="chatIn")S.chatDraft=e.target.value;
+  if(e.target.id==="gChatIn")S.gDraft=e.target.value;
   if(e.target.id==="stakeIn"){S.stake=e.target.value===""?"":Number(e.target.value);const pos=e.target.selectionStart;renderSlip();const i=$("#stakeIn");if(i){i.focus();try{i.setSelectionRange(pos,pos)}catch(_){}}}
 });
 
@@ -560,6 +639,7 @@ setInterval(()=>{refreshPendingDays()},5*60000);
   await loadGroupMeta();
   renderAll();setView(S.view);
   if(S.me.groups.length)openGroup(S.me.groups[0]);
+  watchGlobal();
   refreshPendingDays();
 })();
 })();

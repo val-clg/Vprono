@@ -92,6 +92,7 @@
   function collection(path) {
     const parts = path.split("/");
     if (parts[0] === "groups" && parts[2] === "messages") return messages(parts[1]);
+    if (parts[0] === "global") return globalMessages();
     if (parts[0] !== "players") throw new TypeError("unsupported collection " + path);
     const q = { filters: [], order: null, lim: 1000 };
     const api = {
@@ -131,6 +132,26 @@
       onSnapshot: (next, error) => live("messages", "group_code=eq." + code, run, next, error),
       async add(d) {
         const { error } = await sb.from("messages").insert({ group_code: code, user_id: d.u, body: d.t || "", kind: d.kind || null, bet: d.bet || null });
+        if (error) throw err(error);
+      },
+    };
+    return api;
+  }
+
+  function globalMessages() {
+    const q = { lim: 80 };
+    const run = async () => {
+      const { data, error } = await sb.from("global_messages").select("id,user_id,pseudo,body,kind,bet,ts").order("ts", { ascending: false }).limit(q.lim);
+      if (error) throw error;
+      return { docs: data.map((m) => ({ id: String(m.id), data: () => ({ u: m.user_id, p: m.pseudo, t: m.body, kind: m.kind || undefined, bet: m.bet || undefined, ts: Date.parse(m.ts) }) })) };
+    };
+    const api = {
+      orderBy() { return api; },
+      limit(n) { q.lim = n; return api; },
+      get: run,
+      onSnapshot: (next, error) => live("global_messages", null, run, next, error),
+      async add(d) {
+        const { error } = await sb.from("global_messages").insert({ user_id: d.u, pseudo: (d.p || "").slice(0, 24), body: d.t || "", kind: d.kind || null, bet: d.bet || null });
         if (error) throw err(error);
       },
     };
