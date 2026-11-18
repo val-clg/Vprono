@@ -1,6 +1,6 @@
-/* Public settings of your Supabase project (Project Settings > API).
-   The publishable / anon key is meant to be public: access is protected by the row-level security rules in supabase/schema.sql. */
+/* Public settings of the Supabase project (Project Settings > API Keys).
+   The publishable key is meant to be public: access is protected by the row-level security rules in supabase/schema.sql. */
 window.VPRONO_CONFIG = {
-  supabaseUrl: "https://YOUR-PROJECT.supabase.co",
-  supabaseKey: "YOUR-PUBLISHABLE-OR-ANON-KEY",
+  supabaseUrl: "https://yxmijygaxqfmebmhnbxy.supabase.co",
+  supabaseKey: "sb_publishable_aA_zTb9kx7G7l8FUsmWciQ_Cj2NAsvT",
 };
