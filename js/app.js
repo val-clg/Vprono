@@ -72,7 +72,7 @@ const S={view:"matchs",league:"ALL",day:today(),meta:null,days:{},daySub:null,de
 function freshPlayer(){return{balance:START,bets:[],groups:[],picks:{},lastSpin:"",lastRescue:"",pseudo:"",stats:{won:0,lost:0,best:0,games:0},createdAt:Date.now()}}
 function normalize(p){const f=freshPlayer();return Object.assign(f,p||{},{stats:Object.assign(f.stats,(p&&p.stats)||{}),picks:(p&&p.picks)||{},groups:(p&&p.groups)||[],bets:(p&&p.bets)||[]})}
 let saving=false,dirty=false;
-function scoreOf(p){return (Number(p.balance)||0)+(p.bets||[]).filter(b=>b.status==="pending").reduce((a,b)=>a+(Number(b.stake)||0),0)}
+function scoreOf(p){return (Number(p.balance)||0)+(p.lbets||[]).filter(b=>b.status==="pending").reduce((a,b)=>a+(Number(b.stake)||0),0)+(p.bets||[]).filter(b=>b.status==="pending").reduce((a,b)=>a+(Number(b.stake)||0),0)}
 async function save(){
   S.me.updatedAt=Date.now();S.me.score=scoreOf(S.me);
   if(S.me.bets.length>MAX_BETS){const pend=S.me.bets.filter(b=>b.status==="pending"),done=S.me.bets.filter(b=>b.status!=="pending");S.me.bets=pend.concat(done.slice(0,Math.max(0,MAX_BETS-pend.length)))}
@@ -158,11 +158,13 @@ function statusTag(m,ph){
 function renderMatchs(){
   const v=$("#v-matchs");
   if(S.detail)return renderSheet();
+  const modeSeg=`<div class="seg glass mode-seg"><button data-mmode="foot" aria-pressed="${S.matchMode!=="live"}">⚽ Matchs réels</button><button data-mmode="live" aria-pressed="${S.matchMode==="live"}">⚡ Live flash</button></div>`;
+  if(S.matchMode==="live"&&LIVE&&S.mode==="cloud"){v.innerHTML=modeSeg+LIVE.render();return}
   if(S.mode==="local"){v.innerHTML=`<div><h2>Les matchs</h2></div><div class="glass panel empty">Vprono n'arrive pas à joindre le serveur. Vérifie ta connexion internet puis relance l'appli.</div>`;return}
   if(!S.meta){v.innerHTML=`<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>${S.metaErr?`<p class="note">Le calendrier n'est pas joignable pour l'instant. Réessaie dans un moment.</p>`:""}`;return}
   const days=visibleDays();if(!days.includes(S.day))S.day=nearestDay(days);
   const t=today(),doc=S.days[S.day],now=Date.now();
-  let h=`<div class="row-between"><div><h2>${esc(fLong.format(Date.parse(S.day+"T12:00:00Z")))}</h2><p class="sub">${S.day===t?"Aujourd'hui · ":""}Touche une cote pour l'ajouter au ticket, ou « + paris » pour les buteurs et les compos.</p></div></div>
+  let h=modeSeg+boostCard()+`<div class="row-between"><div><h2>${esc(fLong.format(Date.parse(S.day+"T12:00:00Z")))}</h2><p class="sub">${S.day===t?"Aujourd'hui · ":""}Touche une cote pour l'ajouter au ticket, ou « + paris » pour les buteurs et les compos.</p></div></div>
   <div class="chips" role="group" aria-label="Compétition"><button data-lg="ALL" aria-pressed="${S.league==="ALL"}">Toutes</button>${LEAGUES.map(l=>`<button data-lg="${l.id}" aria-pressed="${S.league===l.id}"><span class="flag" style="background:${l.flag}"></span>${l.name}</button>`).join("")}</div>
   <div class="days"><button class="arrow" data-shift="-1" aria-label="Jour précédent">‹</button><div class="strip" id="strip">${days.map(d=>{const dt=Date.parse(d+"T12:00:00Z"),n=S.meta.days[d][0];return`<button data-day="${d}" aria-pressed="${d===S.day}" class="${d===t?"today":""}"><small>${d===t?"Auj.":fDay.format(dt).replace(".","")}</small><b class="num">${d.slice(8)}</b><i>${["janv","févr","mars","avr","mai","juin","juil","août","sept","oct","nov","déc"][Number(d.slice(5,7))-1]} · ${n}</i></button>`}).join("")}</div><button class="arrow" data-shift="1" aria-label="Jour suivant">›</button></div>`;
   if(!doc){h+=S.dayErr===S.day?`<div class="glass panel empty">Les matchs de ce jour ne sont pas joignables pour l'instant.</div>`:`<div class="skeleton"></div><div class="skeleton"></div>`}
@@ -180,7 +182,7 @@ function renderMatchs(){
       h+=`<div class="league glass"><div class="league-h"><span class="flag" style="background:${lg.flag}"></span>${lg.name}<span class="note">${esc(list[0].r||"")}</span></div>`;
       list.forEach(m=>{
         const ph=phase(m,now),sc=m.sc,real=(m.real||[]).includes("1");
-        h+=`<div class="match"><button class="teams" data-open="${esc(m.id)}" aria-label="Voir ${esc(m.h)} – ${esc(m.a)}"><div class="meta">${statusTag(m,ph)}${real?`<span class="pill real">Cote réelle</span>`:""}</div>
+        h+=`<div class="match"><button class="teams" data-open="${esc(m.id)}" aria-label="Voir ${esc(m.h)} – ${esc(m.a)}"><div class="meta">${statusTag(m,ph)}${real?`<span class="pill real">Cote réelle</span>`:""}${(()=>{const n=S.lb?betsOn(m.id).length:0;return n?`<span class="pill">👥 ${n}</span>`:""})()}</div>
           <div class="row"><span>${crest(m.h)}<em>${esc(m.h)}</em></span>${sc?`<b class="num">${sc[0]}</b>`:""}</div><div class="row"><span>${crest(m.a)}<em>${esc(m.a)}</em></span>${sc?`<b class="num">${sc[1]}</b>`:""}</div></button>
           <div class="odds">${oddBtn(m,"1","1",ph)}${oddBtn(m,"X","N",ph)}${oddBtn(m,"2","2",ph)}</div>
           <button class="morebtn" data-open="${esc(m.id)}">+ paris ›</button></div>`;
@@ -211,6 +213,17 @@ function lineupRows(lu,side){
 function playerChip(m,side,p,ph){
   const k="SC:"+side+":"+p.n,o=oddOf(m,k),sel=S.slip.some(s=>s.mid===m.id&&s.mk===k);
   return`<button class="pl ${side}" ${o&&ph==="open"?`data-mid="${esc(m.id)}" data-d="${esc(S.detailDay)}" data-mk="${esc(k)}"`:"disabled"} aria-pressed="${sel}" title="${esc(p.n)}${o?" · buteur à "+o.toFixed(2):""}"><i>${esc(p.no??"")}</i><span>${esc(short(p.n))}</span>${o?`<small class="num">${o.toFixed(2)}</small>`:""}</button>`;
+}
+function betsOn(mid){
+  const out=[];for(const p of S.lb||[])for(const b of p.bets||[]){const l=(b.legs||[]).find(x=>x.mid===mid);if(l)out.push({p,b,l})}
+  return out.sort((x,y)=>(y.b.placedAt||0)-(x.b.placedAt||0));
+}
+function bettorsHtml(m){
+  if(!S.lb)return"";
+  const list=betsOn(m.id);
+  const stl={pending:"…",won:"Gagné",lost:"Perdu",void:"Remb."};
+  return`<div class="glass panel"><div class="row-between"><h3>👥 Les paris des joueurs</h3><span class="note">${list.length} pari${list.length>1?"s":""}</span></div>
+    ${list.length?`<div class="feed" style="margin-top:6px">${list.slice(0,30).map(({p,b,l})=>`<div><span class="lb-name">${avatar(p.uid,lbName(p),"lb-av")}<span><b>${esc(lbName(p))}</b>${p.uid===S.uid?" (toi)":""} · ${esc(l.lbl||pickLabel(m,l.mk))} @${Number(l.odd).toFixed(2)}${b.legs.length>1?` <span class="note">(combiné × ${b.legs.length})</span>`:""} · <b class="num">${Number(b.stake)||0} pts</b></span></span><span class="st ${esc(b.status)}">${stl[b.status]||""}</span></div>`).join("")}</div>`:`<p class="empty">Personne n'a encore parié sur ce match. Sois le premier !</p>`}</div>`;
 }
 function renderSheet(){
   const v=$("#v-matchs"),m=findMatch(S.detailDay,S.detail);
@@ -259,6 +272,7 @@ function renderSheet(){
         <p class="note">Touche un joueur pour parier qu'il marque. Le 11 probable vient de la presse sportive ; il est remplacé par le 11 officiel environ une heure avant le coup d'envoi.</p>`;
     }
   }
+  h+=bettorsHtml(m);
   v.innerHTML=h;
 }
 
@@ -325,7 +339,7 @@ function renderParis(){
   <div class="subtabs"><button data-bt="pending" aria-pressed="${S.betsTab==="pending"}">En cours (${pend.length})</button><button data-bt="done" aria-pressed="${S.betsTab==="done"}">Terminés (${done.length})</button></div>
   ${list.length?list.map(betCard).join(""):`<div class="glass panel empty">${S.betsTab==="pending"?"Aucun pari en cours. Va dans Matchs pour en placer un.":"Pas encore de pari terminé."}</div>`}
   <div class="glass panel"><label class="label" for="pseudo">Ton pseudo (visible dans tes groupes et au classement)</label><div class="form" style="margin-top:6px"><input id="pseudo" maxlength="24" placeholder="ex. Le Roi du Nul" value="${esc(S.me.pseudo)}"><button class="ghost" id="savePseudo">Enregistrer</button></div></div>
-  <div class="glass panel"><div class="row-between"><div><span class="label">Compte</span><div style="font-weight:600;position:relative">${esc(S.email||"")}</div></div><div style="display:flex;gap:8px;flex-wrap:wrap">${window.VPInstall&&!VPInstall.standalone()?`<button class="ghost" id="installApp">Installer l'appli</button>`:""}<button class="ghost" id="logout">Se déconnecter</button></div></div></div>
+  <div class="glass panel"><div class="row-between"><div><span class="label">Compte</span><div style="font-weight:600;position:relative">${esc(S.email||"")}</div></div><div style="display:flex;gap:8px;flex-wrap:wrap">${window.VPInstall&&!VPInstall.standalone()?`<button class="ghost" id="installApp">Installer l'appli</button>`:""}<button class="ghost" id="logout">Se déconnecter</button></div></div>${notifPromptHtml()?`<div style="margin-top:10px">${notifPromptHtml()}</div>`:""}</div>
   ${donateCard()}`;
 }
 
@@ -521,6 +535,54 @@ const DUELS=window.VPDuels?window.VPDuels({S,esc,save,toast,
   rerender:()=>{if(S.view==="jeux"&&S.gameId==="duel"){renderJeux()}else if(S.view==="jeux"&&!S.gameId){renderJeux()}renderHeader();renderTabs()},
   bumpBalance:()=>renderHeader(),sendGlobal:(d)=>sendGlobal(d),quizBank:GAMES?GAMES.quizBank:[]}):null;
 
+const LIVE=window.VPLive?window.VPLive({S,esc,save,toast,bumpBalance:()=>renderHeader(),
+  rerender:()=>{if(S.view==="matchs"&&S.matchMode==="live")renderMatchs()}}):null;
+
+/* ---------- Evening boosted odd + notifications ---------- */
+const BOOST_MAX=20;
+function watchBoost(){if(VP.boosts)VP.boosts.watch(today(),doc=>{S.boost=doc;if(doc&&doc.d)loadDays([doc.d]).then(()=>{if(S.view==="matchs")renderMatchs()});if(S.view==="matchs")renderMatchs()})}
+function boostCard(){
+  const b=S.boost;if(!b)return"";
+  const m=findMatch(b.d,b.mid),ph=m?phase(m):"open",taken=S.me.boostDay===b.date;
+  const pend=S.me.bets.find(x=>x.boost===b.date);
+  return`<div class="boost glass"><div class="boost-top"><span class="boost-fire" aria-hidden="true">🔥</span><div><span class="label">Cote boostée du soir</span><h3>${esc(b.lbl)}</h3><small class="note">${esc(b.mt)} · ${esc(fTime.format(b.k))}</small></div></div>
+    <div class="boost-odds"><s class="num">${Number(b.base).toFixed(2)}</s><span aria-hidden="true">→</span><b class="num">${Number(b.odd).toFixed(2)}</b></div>
+    ${taken?`<p class="note boost-done">${pend?`Tu as misé ${pend.stake} pts dessus. Rendez-vous au coup de sifflet !`:"Déjà joué aujourd'hui."}</p>`:ph!=="open"?`<p class="note">Le match a commencé, la cote boostée est fermée.</p>`:`<div class="stake"><input id="boostStake" type="number" min="1" max="${BOOST_MAX}" step="1" value="${Math.min(BOOST_MAX,10)}" aria-label="Mise cote boostée"><button class="cta" id="boostGo" ${S.canWrite?"":"disabled"}>Parier (max ${BOOST_MAX} pts)</button></div>`}
+    ${notifPromptHtml()}</div>`;
+}
+function placeBoost(){
+  const b=S.boost;if(!b||S.me.boostDay===b.date)return;
+  const m=findMatch(b.d,b.mid);if(!m||phase(m)!=="open"){toast("Le match a commencé.");return}
+  const st=Number($("#boostStake").value);
+  if(!Number.isInteger(st)||st<1||st>BOOST_MAX){toast("Mise entre 1 et "+BOOST_MAX+" pts.");return}
+  if(st>S.me.balance){toast("Pas assez de points.");return}
+  S.me.balance-=st;S.me.boostDay=b.date;
+  S.me.bets.unshift({id:Date.now().toString(36)+"b",boost:b.date,legs:[{d:b.d,mid:b.mid,mk:b.mk,odd:Number(b.odd),lbl:"🔥 "+b.lbl,mt:b.mt,k:m.k}],stake:st,odds:Number(b.odd),placedAt:Date.now(),status:"pending"});
+  save();toast("🔥 Cote boostée jouée : "+st+" pts @"+Number(b.odd).toFixed(2));renderAll();
+}
+const pushSupported=()=>"serviceWorker" in navigator&&"PushManager" in window&&"Notification" in window;
+const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+function notifPromptHtml(){
+  const key=(window.VPRONO_CONFIG||{}).vapidPublicKey;if(!key)return"";
+  if(isIOS&&window.VPInstall&&!VPInstall.standalone())return`<p class="note">🔔 Sur iPhone, installe Vprono sur ton écran d'accueil pour recevoir la cote boostée chaque soir.</p>`;
+  if(!pushSupported()||S.notifOn||Notification.permission==="denied")return typeof Notification!=="undefined"&&Notification.permission==="denied"?`<p class="note">🔕 Notifications bloquées : réactive-les dans les réglages du navigateur pour recevoir la cote du soir.</p>`:"";
+  return`<button class="ghost notif-btn" id="notifOn">🔔 Me prévenir chaque soir</button>`;
+}
+const b64u=s=>{const p="=".repeat((4-s.length%4)%4),b=atob((s+p).replace(/-/g,"+").replace(/_/g,"/"));return Uint8Array.from([...b].map(c=>c.charCodeAt(0)))};
+async function enableNotifs(){
+  try{
+    if(await Notification.requestPermission()!=="granted"){toast("Notifications refusées. Tu pourras les activer plus tard.");renderAll();return}
+    const reg=await navigator.serviceWorker.ready;
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64u(VPRONO_CONFIG.vapidPublicKey)});
+    await VP.push.save(S.uid,sub);S.notifOn=true;toast("🔔 C'est noté : tu recevras la cote boostée chaque soir.");renderAll();
+  }catch(e){toast("Impossible d'activer les notifications sur cet appareil.")}
+}
+async function checkNotifs(){
+  try{if(!pushSupported()||Notification.permission!=="granted")return;const reg=await navigator.serviceWorker.ready;const sub=await reg.pushManager.getSubscription();
+    if(sub){S.notifOn=true;VP.push.save(S.uid,sub).catch(()=>{})}}catch(e){}
+}
+
 /* ---------- Gifts from the creator ---------- */
 const giftQueue=[];let giftBusy=false;
 function watchGifts(){
@@ -556,8 +618,20 @@ function watchLeaderboard(){
     clearTimeout(t);S.lbErr=false;S.lb=snap.docs.map(d=>Object.assign({uid:d.id},d.data()));
     const missing=S.lb.filter(p=>!p.pseudo&&!S.names[p.uid]).map(p=>p.uid);
     if(S.user&&missing.length){try{const ps=await S.user.profiles(missing.slice(0,64));Object.values(ps).forEach(p=>{if(p.name)S.names[p.id]=p.name})}catch(e){}}
-    renderClassement();
+    renderClassement();if(S.view==="matchs")renderMatchs();
   },()=>{clearTimeout(t);S.lbErr=true;renderClassement()});
+}
+function playerSheet(uid){
+  const p=(S.lb||[]).find(x=>x.uid===uid);if(!p)return;
+  const w=$("#welcome"),st=p.stats||{},n=(st.won||0)+(st.lost||0);
+  const stl={pending:"En cours",won:"Gagné",lost:"Perdu",void:"Remboursé"};
+  w.hidden=false;
+  w.innerHTML=`<div class="card glass player-card" role="dialog" aria-modal="true" aria-labelledby="pTitle">
+    <div class="row-between"><span class="lb-name">${avatar(p.uid,lbName(p),"av")}<h2 id="pTitle">${esc(lbName(p))}</h2></span><button class="x" id="pClose" aria-label="Fermer">×</button></div>
+    <div class="stats3"><div><b class="num">${Number(p.score)||scoreOf(p)}</b><small>points</small></div><div><b class="num">${st.won||0}</b><small>paris gagnés</small></div><div><b class="num">${n?Math.round(100*(st.won||0)/n)+"%":"–"}</b><small>réussite</small></div><div><b class="num">${st.duelsWon||0}</b><small>duels gagnés</small></div></div>
+    <h3>Derniers paris</h3>
+    <div class="feed pc-feed">${(p.bets||[]).slice(0,12).map(b=>`<div><span>${b.legs.length>1?`<b>Combiné × ${b.legs.length}</b><br>`:""}${b.legs.slice(0,4).map(l=>`${esc(l.lbl||l.mk)} <span class="note">· ${esc(l.mt||"")} @${Number(l.odd).toFixed(2)}</span>`).join("<br>")}<br><span class="note">Mise ${Number(b.stake)||0} pts · cote ${Number(b.odds||0).toFixed(2)}</span></span><span class="st ${esc(b.status)}">${stl[b.status]||""}${b.status==="won"?" +"+(Number(b.payout)||0):""}</span></div>`).join("")||`<p class="empty">Aucun pari pour l'instant.</p>`}</div>
+    ${p.uid!==S.uid&&p.pseudo&&window.VPDuels?`<button class="cta" id="pDuel" data-uid="${esc(p.uid)}" data-name="${esc(p.pseudo)}">⚔️ Défier ${esc(p.pseudo)} en duel</button>`:""}</div>`;
 }
 function renderClassement(){
   const v=$("#v-classement");
@@ -573,13 +647,13 @@ function renderClassement(){
     h+=`<div class="podium">${order.map((p,i)=>p?`<div class="pod glass ${cls[i]}"><span class="medal">${med[i]}</span>${avatar(p.uid,lbName(p),"av")}<span class="nm">${esc(lbName(p))}${p.uid===S.uid?" (toi)":""}</span><b class="num">${pts(p)}</b><span class="note">pts</span></div>`:"<div></div>").join("")}</div>`;
   }
   h+=`<div class="glass panel"><div class="tablewrap"><table class="lb"><thead><tr><th>#</th><th>Joueur</th><th class="r">Points</th><th class="r opt">Gagnés</th><th class="r opt">Réussite</th></tr></thead><tbody>
-  ${lb.map((p,i)=>{const st=p.stats||{},n=(st.won||0)+(st.lost||0);return`<tr class="${p.uid===S.uid?"me":""}"><td class="rank num">${i+1}</td><td><div class="lb-name">${avatar(p.uid,lbName(p),"lb-av")}<span>${esc(lbName(p))}${p.uid===S.uid?" (toi)":""}</span></div></td><td class="r num"><b>${pts(p)}</b></td><td class="r num opt">${st.won||0}</td><td class="r num opt">${n?Math.round(100*(st.won||0)/n)+" %":"–"}</td></tr>`}).join("")}
+  ${lb.map((p,i)=>{const st=p.stats||{},n=(st.won||0)+(st.lost||0);return`<tr class="${p.uid===S.uid?"me":""} lb-row" data-player="${esc(p.uid)}"><td class="rank num">${i+1}</td><td><div class="lb-name">${avatar(p.uid,lbName(p),"lb-av")}<span>${esc(lbName(p))}${p.uid===S.uid?" (toi)":""}</span></div></td><td class="r num"><b>${pts(p)}</b></td><td class="r num opt">${st.won||0}</td><td class="r num opt">${n?Math.round(100*(st.won||0)/n)+" %":"–"}</td></tr>`}).join("")}
   </tbody></table></div></div><p class="note">Le top 200 s'affiche. Pour apparaître sous ton pseudo, choisis-le dans « Mes paris ».</p>`;
   v.innerHTML=h;
 }
 function renderWelcome(){
   const w=$("#welcome");
-  if(w.querySelector(".gift-card"))return;
+  if(w.querySelector(".gift-card,.player-card"))return;
   if(S.mode!=="cloud"||S.me.pseudo||S.welcomeDone||!S.canWrite){w.hidden=true;return}
   w.hidden=false;
   w.innerHTML=`<div class="card glass" role="dialog" aria-modal="true" aria-labelledby="wTitle"><div class="brand" style="justify-content:center;font-size:26px"><svg class="logo big" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="vpg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2F7BFF"/><stop offset=".55" stop-color="#7B5CFF"/><stop offset="1" stop-color="#FF4D8D"/></linearGradient><linearGradient id="vph2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient></defs><rect x="2" y="2" width="60" height="60" rx="18" fill="url(#vpg2)"/><rect x="2" y="2" width="60" height="30" rx="18" fill="url(#vph2)"/><path d="M15 17l13 30 11-25" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="45" cy="17" r="7.5" fill="#fff"/><path d="M45 12.6l3.6 2.6-1.4 4.2h-4.4l-1.4-4.2z" fill="#1B1F3B"/></svg><span>V<i>prono</i></span></div>
@@ -604,9 +678,16 @@ document.addEventListener("submit",async e=>{
 });
 $("#scrim").addEventListener("click",()=>{S.slipOpen=false;renderSlip()});
 window.addEventListener("resize",()=>renderSlip());
+document.addEventListener("click",e=>{const r=e.target.closest("tr[data-player]");if(r)playerSheet(r.dataset.player)});
 document.addEventListener("click",async e=>{
   const t=e.target.closest("button,[id=slipToggle]");if(!t)return;
   if(t.id==="giftOk"){$("#welcome").hidden=true;showGift();return}
+  if(t.id==="pClose"){$("#welcome").hidden=true;return}
+  if(t.id==="boostGo"){placeBoost();return}
+  if(t.id==="notifOn"){enableNotifs();return}
+  if(t.dataset.mmode){S.matchMode=t.dataset.mmode;try{localStorage.setItem("vp-mmode",S.matchMode)}catch(_){}renderMatchs();return}
+  if(S.view==="matchs"&&S.matchMode==="live"&&LIVE&&LIVE.click(t))return;
+  if(t.id==="pDuel"){$("#welcome").hidden=true;setView("jeux");openGame("duel");if(DUELS)DUELS.challenge({id:t.dataset.uid,pseudo:t.dataset.name});renderJeux();return}
   if(S.view==="jeux"){if(t.dataset.game){openGame(t.dataset.game);return}if(t.hasAttribute("data-game-back")){openGame(null);return}if(S.gameId==="duel"&&DUELS&&DUELS.click(t))return;if(GAMES&&GAMES.click(t))return}
   if(t.dataset.day){selectDay(t.dataset.day)}
   else if(t.dataset.shift){const ds=visibleDays(),i=ds.indexOf(S.day)+Number(t.dataset.shift);if(ds[i])selectDay(ds[i])}
@@ -641,13 +722,16 @@ document.addEventListener("click",async e=>{
 });
 document.addEventListener("input",e=>{
   if(DUELS&&S.gameId==="duel"&&DUELS.input(e))return;
+  if(LIVE&&LIVE.input(e))return;
   if(e.target.id==="chatIn")S.chatDraft=e.target.value;
   if(e.target.id==="gChatIn")S.gDraft=e.target.value;
   if(e.target.id==="stakeIn"){S.stake=e.target.value===""?"":Number(e.target.value);const pos=e.target.selectionStart;renderSlip();const i=$("#stakeIn");if(i){i.focus();try{i.setSelectionRange(pos,pos)}catch(_){}}}
 });
 
 renderAll();setView("matchs");
-setInterval(()=>{renderHeader();if(S.view==="matchs")renderMatchs()},30000);
+setInterval(()=>{renderHeader();if(S.view==="matchs"&&S.matchMode!=="live")renderMatchs()},30000);
+setInterval(()=>{if(S.view==="matchs"&&S.matchMode==="live"&&!S.detail&&LIVE&&LIVE.tick())renderMatchs()},1000);
+setInterval(()=>{if(LIVE&&S.mode==="cloud")LIVE.settle()},15000);
 setInterval(()=>{refreshPendingDays()},5*60000);
 
 (async function boot(){
@@ -668,9 +752,9 @@ setInterval(()=>{refreshPendingDays()},5*60000);
   await loadGroupMeta();
   renderAll();setView(S.view);
   if(S.me.groups.length)openGroup(S.me.groups[0]);
-  watchGlobal();
+  watchGlobal();watchLeaderboard();if(LIVE)LIVE.settle();
   if(DUELS)DUELS.watch();
-  watchGifts();
+  watchGifts();watchBoost();checkNotifs();
   refreshPendingDays();
 })();
 })();

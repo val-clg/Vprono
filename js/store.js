@@ -225,7 +225,29 @@
     },
   };
 
+  /* ---------- evening boost + push notifications ---------- */
+  const boosts = {
+    watch(date, next) {
+      const load = async () => {
+        const { data, error } = await sb.from("boosts").select("doc").eq("date", date).maybeSingle();
+        if (error) throw error;
+        return data ? data.doc : null;
+      };
+      return live("boosts", "date=eq." + date, load, next, () => {});
+    },
+  };
+  const push = {
+    async save(uid, sub) {
+      const j = sub.toJSON();
+      const { error } = await sb.from("push_subs").upsert({ endpoint: j.endpoint, user_id: uid, p256dh: j.keys.p256dh, auth: j.keys.auth });
+      if (error) throw err(error);
+    },
+    async remove(endpoint) { await sb.from("push_subs").delete().eq("endpoint", endpoint); },
+  };
+
   window.VP = {
+    boosts,
+    push,
     duels,
     gifts,
     sb,

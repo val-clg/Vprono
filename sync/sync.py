@@ -10,7 +10,7 @@ Sources:
 
 Usage: python3 -I sync.py --source api|of --out DIR [--of-dir DIR] [--days-back 3 --days-ahead 10] [--full]
 """
-import argparse, json, math, os, re, sys, time, unicodedata, urllib.request
+import argparse, json, math, os, re, sys, time, unicodedata, urllib.parse, urllib.request
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -785,6 +785,93 @@ def sb_push(base, out_dir):
     print(json.dumps({"pushed_days": pushed, "meta": os.path.exists(meta_p)}))
 
 
+
+# ---------- Evening boosted odd + push notifications ----------
+BOOST_MARKETS = [  # (market key, label template, boost factor); one is picked per day
+    ("FAV", "{fav} gagne", 1.35),
+    ("BY", "Les deux équipes marquent", 1.35),
+    ("O25", "Plus de 2,5 buts dans le match", 1.35),
+    ("SC", "{player} marque", 1.30),
+]
+
+
+def make_boost(base, out_dir):
+    now = datetime.now(PARIS)
+    today = now.strftime("%Y-%m-%d")
+    rows = sb_request(base, "GET", f"days?select=doc&date=eq.{today}")
+    if not rows:
+        print(json.dumps({"boost": None, "why": "no matches today"}))
+        return None
+    now_ms = int(time.time() * 1000)
+    evening = [m for m in rows[0]["doc"]["matches"]
+               if m.get("st") == "NS" and not m.get("tbc") and m.get("odds") and m["k"] > now_ms + 30 * 60000
+               and datetime.fromtimestamp(m["k"] / 1000, PARIS).hour >= 17]
+    if not evening:
+        print(json.dumps({"boost": None, "why": "no evening match"}))
+        return None
+    prio = {"CL": 0, "L1": 1, "PL": 2, "LL": 3, "SA": 4, "BL": 5}
+    evening.sort(key=lambda m: (prio.get(m["l"], 9), abs(m["odds"]["1"] - m["odds"]["2"])))
+    m = evening[0]
+    kind, tpl, factor = BOOST_MARKETS[now.toordinal() % len(BOOST_MARKETS)]
+    short = lambda n: re.sub(r"\b(FC|CF|AFC|SC|AC|AS|SSC|OGC|RC|1\.)\b", "", n).strip()
+    mk, lbl = None, None
+    if kind == "SC":
+        cand = []
+        for side in ("h", "a"):
+            for p in (m.get("scorers") or {}).get(side, [])[:1]:
+                cand.append((p["o"], side, p["n"]))
+        if cand:
+            o, side, name = min(cand)
+            mk, lbl = f"SC:{side}:{name}", f"{name} marque"
+        else:
+            kind, tpl, factor = BOOST_MARKETS[0]
+    if kind == "FAV":
+        side = "1" if m["odds"]["1"] <= m["odds"]["2"] else "2"
+        mk, lbl = side, f"{short(m['h'] if side == '1' else m['a'])} gagne"
+    elif kind in ("BY", "O25"):
+        mk, lbl = kind, tpl
+    base_odd = (m["odds"].get(mk) if not mk.startswith("SC:") else
+                next(p["o"] for p in m["scorers"][mk[3]] if p["n"] == mk[5:]))
+    boosted = round(max(base_odd * factor, base_odd + 0.25), 2)
+    kickoff = datetime.fromtimestamp(m["k"] / 1000, PARIS).strftime("%H:%M")
+    mt = f"{short(m['h'])} – {short(m['a'])}"
+    doc = {"date": today, "mid": m["id"], "d": today, "mk": mk, "lbl": lbl, "mt": mt, "l": m["l"], "k": m["k"],
+           "base": base_odd, "odd": boosted, "max": 20,
+           "title": f"🔥 Cote boostée : {base_odd:.2f} → {boosted:.2f}",
+           "body": f"{lbl} ({mt}, {kickoff}). Mise max 20 pts, ce soir seulement !"}
+    sb_request(base, "POST", "boosts?on_conflict=date", [{"date": today, "doc": doc}], "resolution=merge-duplicates,return=minimal")
+    print(json.dumps({"boost": doc}, ensure_ascii=False))
+    return doc
+
+
+def send_push(base, title, body, url="./"):
+    """Send a notification to every registered device. Needs `pip install pywebpush`."""
+    from pywebpush import webpush, WebPushException
+    key = sb_request(base, "GET", "app_secrets?select=value&key=eq.vapid_private_pem")
+    if not key:
+        raise SystemExit("VAPID key missing in app_secrets")
+    pem = key[0]["value"]
+    subs = sb_request(base, "GET", "push_subs?select=endpoint,p256dh,auth")
+    sent, gone = 0, []
+    payload = json.dumps({"title": title, "body": body, "url": url, "tag": "boost"})
+    for s in subs:
+        try:
+            webpush({"endpoint": s["endpoint"], "keys": {"p256dh": s["p256dh"], "auth": s["auth"]}}, payload,
+                    vapid_private_key=pem, vapid_claims={"sub": "mailto:noreply@vprono.app"}, ttl=6 * 3600)
+            sent += 1
+        except WebPushException as e:
+            code = getattr(e.response, "status_code", None)
+            if code in (404, 410):
+                gone.append(s["endpoint"])
+            else:
+                print("push failed", code, str(e)[:160], file=sys.stderr)
+        except Exception as e:
+            print("push failed", str(e)[:160], file=sys.stderr)
+    for ep in gone:
+        sb_request(base, "DELETE", "push_subs?endpoint=eq." + urllib.parse.quote(ep, safe=""))
+    print(json.dumps({"devices": len(subs), "sent": sent, "removed": len(gone)}))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--source", choices=["api", "of", "auto"], default="auto")
@@ -796,15 +883,25 @@ def main():
     ap.add_argument("--full", action="store_true", help="write every day of the season")
     ap.add_argument("--mode", choices=["full", "light"], default="full")
     ap.add_argument("--base-dir", help="light mode: folder with the stored day documents (<date>.json)")
-    ap.add_argument("cmd", nargs="?", choices=["plan", "build", "fetch", "push"],
+    ap.add_argument("cmd", nargs="?", choices=["plan", "build", "fetch", "push", "boost", "notify"],
                     help="autonomous mode: 'fetch' stored days from Supabase, 'plan' what to research, 'build' the documents, 'push' them to Supabase")
     ap.add_argument("--supabase", default=os.environ.get("VPRONO_SUPABASE_URL"), help="https://<project>.supabase.co")
     ap.add_argument("--research", help="build: JSON file with web research results and line-ups")
+    ap.add_argument("--no-notify", action="store_true", help="boost: do not send the notification")
+    ap.add_argument("--title", default="Vprono")
+    ap.add_argument("--body", default="")
     a = ap.parse_args()
     if a.cmd == "fetch":
         return sb_fetch(a.supabase, a.base_dir, a.days_back)
     if a.cmd == "push":
         return sb_push(a.supabase, a.out)
+    if a.cmd == "boost":
+        doc = make_boost(a.supabase, a.out)
+        if doc and not a.no_notify:
+            send_push(a.supabase, doc["title"], doc["body"])
+        return
+    if a.cmd == "notify":
+        return send_push(a.supabase, a.title, a.body)
     if a.cmd:
         return autonomous(a)
     now = datetime.now(PARIS)

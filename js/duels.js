@@ -215,5 +215,6 @@ window.VPDuels = function (core) {
     render, click, input, watch, settle,
     todo: () => D.list.filter(myTurn).length,
     open(id) { D.view = id || null; D.form = null; },
+    challenge(opp) { D.view = null; D.form = { game: "pen", stake: 10, mode: "player", opp }; if (D.players == null) loadPlayers(); },
   };
 };
