@@ -213,7 +213,7 @@ window.VPCasino = function (core) {
   function slotPay(r) { if (r[0] === r[1] && r[1] === r[2]) return PAY3[r[0]]; if (r.filter((x) => x === "🍒").length === 2) return 2; return 0; }
   function slotsHtml() {
     const L = C.sl;
-    return `<div class="slot"><div class="slot-win">${L.reels.map((s, i) => `<div class="reel" id="reel${i}"><div class="strip">${s}</div></div>`).join("")}</div><div class="slot-line"></div></div>
+    return `<div class="slot"><div class="slot-win">${L.reels.map((s, i) => `<div class="reel" id="reel${i}"><div class="reel-strip">${s}</div></div>`).join("")}</div><div class="slot-line"></div></div>
       <p class="gmsg" id="slMsg">${esc(L.msg || "3 symboles identiques sur la ligne = jackpot")}</p>
       <div class="paytable">${Object.entries(PAY3).reverse().map(([s, p]) => `<span>${s}${s}${s} <b class="num">×${p}</b></span>`).join("")}<span>🍒🍒 <b class="num">×2</b></span></div>
       ${chips("sl")}
@@ -224,7 +224,7 @@ window.VPCasino = function (core) {
     const res = [pick(), pick(), pick()]; L.spinning = true; L.msg = ""; rr();
     const all = SYM.map((s) => s[0]); const fast = reduce();
     res.forEach((sym, i) => {
-      const el = document.querySelector(`#reel${i} .strip`); if (!el) return;
+      const el = document.querySelector(`#reel${i} .reel-strip`); if (!el) return;
       const seq = Array.from({ length: 18 + i * 6 }, () => all[rand(all.length)]).concat([sym]);
       el.innerHTML = seq.map((s) => `<span>${s}</span>`).join(""); el.style.transition = "none"; el.style.transform = "translateY(0)";
       requestAnimationFrame(() => requestAnimationFrame(() => { el.style.transition = `transform ${fast ? 0.05 : 1.1 + i * 0.45}s cubic-bezier(.15,.8,.25,1)`; el.style.transform = `translateY(calc(-${seq.length - 1} * var(--reel-h)))`; }));
