@@ -11,6 +11,7 @@ window.VPLive = function (core) {
   const bets = () => (Array.isArray(S.me.lbets) ? S.me.lbets : (S.me.lbets = []));
   const now = () => Date.now();
   const SALT = "vprono-live-1";
+  const shuffle = (arr, r) => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }; // same order on every device
   function rng(seed) { let h = 2166136261; for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); } return () => { h = Math.imul(h ^ (h >>> 15), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); h ^= h >>> 16; return (h >>> 0) / 4294967296; }; }
   const pois = (l, k) => { let f = 1; for (let i = 2; i <= k; i++) f *= i; return Math.exp(-l) * Math.pow(l, k) / f; };
   const odd = (p, m) => Math.max(1.05, Math.round(100 / (p * m)) / 100);
@@ -47,7 +48,7 @@ window.VPLive = function (core) {
   const SILK = ["#FF4D8D", "#3D8BFF", "#FFBE2E", "#33D17A", "#9B7BFF", "#FF8A3D"];
   function hrRace(n) {
     const r = rng(SALT + "hr" + n);
-    const names = HORSES.slice().sort(() => r() - 0.5).slice(0, 6);
+    const names = shuffle(HORSES.slice(), r).slice(0, 6);
     const w = names.map(() => 0.5 + r() * 2.2), W = w.reduce((x, y) => x + y, 0);
     const order = [], left = names.map((_, i) => i);
     while (left.length) { const tot = left.reduce((s, i) => s + w[i], 0); let u = r() * tot, k = 0; while (u > w[left[k]] && k < left.length - 1) { u -= w[left[k]]; k++; } order.push(left.splice(k, 1)[0]); }
@@ -90,7 +91,30 @@ window.VPLive = function (core) {
     catch (_) { L.btc.err = true; }
   }
 
-  /* ---------- bets ---------- */
+  /* ---------- ticket legs: {live:1, g, n, k, odd, lbl, mt} ---------- */
+  const hhmm = (ms) => new Date(ms).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  function closeAt(g, n) { return g === "vf" ? vfMatch(n).ko : g === "hr" ? hrRace(n).start : n * BTC_SLOT; }
+  function endAt(g, n) { return g === "vf" ? vfMatch(n).end : g === "hr" ? hrRace(n).end : (n + 1) * BTC_SLOT + 60000; }
+  const btcRes = {};   // round -> {open, close} once known
+  async function fetchBtc(n) { if (btcRes[n] || btcRes[n] === 0) return; btcRes[n] = 0; const r = await btcRound(n * BTC_SLOT).catch(() => null); if (r) btcRes[n] = r; else delete btcRes[n]; }
+  function legResult(l) {
+    const t = now(); if (t < endAt(l.g, l.n)) return null;
+    if (l.g === "vf") return vfWins(l.k, vfMatch(l.n).final) ? "won" : "lost";
+    if (l.g === "hr") { const r = hrRace(l.n), [hi, mode] = String(l.k).split(":"), pos = r.order.indexOf(Number(hi)); return (mode === "p" ? pos < 2 : pos === 0) ? "won" : "lost"; }
+    const rd = btcRes[l.n];
+    if (rd && rd.open) return rd.close === rd.open ? "void" : (rd.close > rd.open) === (l.k === "up") ? "won" : "lost";
+    if (t > endAt(l.g, l.n) + 6 * 3600000) return "void";
+    fetchBtc(l.n).then(() => { if (btcRes[l.n]) core.onResults(); });
+    return null;
+  }
+  function ctx(l) {
+    const t = now();
+    if (l.g === "vf") { const m = vfMatch(l.n), sc = t >= m.ko ? vfScore(m, t) : null; return `⚡ Match virtuel ${hhmm(m.ko)} · ${m.h} – ${m.a}${sc ? " · " + sc.join("-") + (t < m.end ? " (en cours)" : "") : ""}`; }
+    if (l.g === "hr") { const r = hrRace(l.n); return `⚡ Course de ${hhmm(r.start)}${t >= r.end ? " · 1er " + r.names[r.order[0]] + ", 2e " + r.names[r.order[1]] : ""}`; }
+    const rd = btcRes[l.n]; return `⚡ Bitcoin ${hhmm(l.n * BTC_SLOT)}–${hhmm((l.n + 1) * BTC_SLOT)}${rd && rd.open ? " · " + Math.round(rd.open).toLocaleString("fr-FR") + " → " + Math.round(rd.close).toLocaleString("fr-FR") + " $" : ""}`;
+  }
+
+  /* ---------- old direct flash bets (before the ticket), still settled ---------- */
   function place(g, n, k, odds, lbl) {
     const stake = Number(L.stakes[g]);
     if (!Number.isInteger(stake) || stake < 1) { toast("Mise un nombre entier de points."); return; }
@@ -131,7 +155,7 @@ window.VPLive = function (core) {
 
   /* ---------- view ---------- */
   const stakeRow = (g) => `<div class="stake"><input data-lstake="${g}" type="number" min="1" max="100" step="1" value="${esc(L.stakes[g])}" aria-label="Mise"><button class="chipbtn" data-lst="${g}:5">5</button><button class="chipbtn" data-lst="${g}:10">10</button><button class="chipbtn" data-lst="${g}:25">25</button></div>`;
-  const btn = (g, n, k, o, label, lbl) => `<button class="odd" data-lbet="${g}|${n}|${k}|${o}|${esc(lbl)}"><small>${esc(label)}</small><b class="num">${o.toFixed(2)}</b></button>`;
+  const btn = (g, n, k, o, label, lbl) => `<button class="odd" data-lsel="${g}|${n}|${k}|${o}|${esc(lbl)}" aria-pressed="${core.inSlip(g + ":" + n, k)}"><small>${esc(label)}</small><b class="num">${o.toFixed(2)}</b></button>`;
   function vfHtml(t) {
     const n0 = Math.floor(t / VF_SLOT), cur = vfMatch(n0), nextN = t < cur.ko ? n0 : n0 + 1, nxt = vfMatch(nextN);
     const liveM = t >= cur.ko && t < cur.end ? cur : null, prev = vfMatch(n0 - 1);
@@ -145,7 +169,7 @@ window.VPLive = function (core) {
         <div class="vf-teams sm"><b>${esc(nxt.h)}</b><span>vs</span><b>${esc(nxt.a)}</b></div>
         <div class="live-odds">${btn("vf", nextN, "1", nxt.odds["1"], "1", nxt.h)}${btn("vf", nextN, "X", nxt.odds.X, "N", "Match nul")}${btn("vf", nextN, "2", nxt.odds["2"], "2", nxt.a)}</div>
         <div class="live-odds">${btn("vf", nextN, "O", nxt.odds.O, "+2,5 buts", "+2,5 buts")}${btn("vf", nextN, "U", nxt.odds.U, "−2,5", "−2,5 buts")}${btn("vf", nextN, "BY", nxt.odds.BY, "2 marquent", "Les 2 marquent")}</div>
-        ${stakeRow("vf")}</div></div>`;
+        <p class="note">Touche une cote pour l'ajouter à ton ticket.</p></div></div>`;
   }
   function hrHtml(t) {
     const n0 = Math.floor(t / HR_SLOT), cur = hrRace(n0), running = t >= cur.start && t < cur.end + 15000;
@@ -156,7 +180,7 @@ window.VPLive = function (core) {
       <p class="note" id="hrRes">${done ? "Arrivée : " + shown.order.slice(0, 3).map((i, p) => ["🥇", "🥈", "🥉"][p] + " " + esc(shown.names[i])).join("  ") : t < shown.start ? "" : "Course en cours…"}</p>
       <div class="live-next"><span class="label">Prochaine course dans <span data-cd="${nxt.start}">${fmtS(nxt.start - t)}</span> · gagnant / placé (top 2)</span>
         <div class="hr-list">${nxt.names.map((nm, i) => `<div class="hr-row"><span><i class="silk" style="background:${SILK[i]}"></i>${i + 1}. ${esc(nm)}</span>${btn("hr", nextN, i + ":w", nxt.win[i], "Gagnant", nm + " gagnant")}${btn("hr", nextN, i + ":p", nxt.place[i], "Placé", nm + " placé")}</div>`).join("")}</div>
-        ${stakeRow("hr")}</div></div>`;
+        <p class="note">Touche une cote pour l'ajouter à ton ticket.</p></div></div>`;
   }
   function btcHtml(t) {
     const cur = Math.floor(t / BTC_SLOT), next = cur + 1, start = next * BTC_SLOT;
@@ -167,13 +191,15 @@ window.VPLive = function (core) {
       <div class="live-next"><span class="label">Manche de ${new Date(start).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} à ${new Date(start + BTC_SLOT).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} · paris ouverts encore <span data-cd="${start}">${fmtS(start - t)}</span></span>
         <p class="note">Le cours à la fin de la manche sera-t-il plus haut ou plus bas qu'au début ? Égalité : mise rendue.</p>
         <div class="live-odds">${btn("btc", next, "up", 1.9, "▲ Plus haut", "Bitcoin monte")}${btn("btc", next, "down", 1.9, "▼ Plus bas", "Bitcoin baisse")}</div>
-        ${stakeRow("btc")}</div></div>`;
+        <p class="note">Touche une cote pour l'ajouter à ton ticket.</p></div></div>`;
   }
   function mineHtml() {
-    const list = bets().slice(0, 10); if (!list.length) return "";
+    const tickets = (S.me.bets || []).filter((b) => b.legs.some((l) => l.live)).slice(0, 8);
+    const old = bets().filter((b) => b.status === "pending");
+    if (!tickets.length && !old.length) return "";
     const st = { pending: "En cours", won: "Gagné", lost: "Perdu", void: "Remboursé" };
-    const ctx = (b) => b.g === "vf" ? (() => { const m = vfMatch(b.n); return m.h + " – " + m.a + (now() >= m.end ? " · " + m.final.join("-") : ""); })() : b.g === "hr" ? "Course de " + new Date(hrRace(b.n).start).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "Manche de " + new Date(b.n * BTC_SLOT).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-    return `<div class="glass panel"><h3>Mes paris flash</h3><div class="feed">${list.map((b) => `<div><span><b>${esc(b.lbl)}</b> @${b.odd.toFixed(2)} · ${b.stake} pts<br><span class="note">${esc(ctx(b))}</span></span><span class="st ${b.status}">${st[b.status]}${b.status === "won" ? " +" + b.payout : ""}</span></div>`).join("")}</div></div>`;
+    return `<div class="glass panel"><div class="row-between"><h3>Mes tickets flash</h3><button class="linkbtn" data-goparis="1">Tout voir dans Paris ›</button></div><div class="feed">${tickets.map((b) => `<div><span><b>${b.legs.length > 1 ? "Combiné × " + b.legs.length : esc(b.legs[0].lbl)}</b> @${b.odds.toFixed(2)} · ${b.stake} pts<br><span class="note">${esc(b.legs.length > 1 ? b.legs.map((l) => l.lbl).join(" + ") : ctx(b.legs[0]))}</span></span><span class="st ${b.status}">${st[b.status]}${b.status === "won" ? " +" + b.payout : ""}</span></div>`).join("")}
+      ${old.map((b) => `<div><span><b>${esc(b.lbl)}</b> @${b.odd.toFixed(2)} · ${b.stake} pts</span><span class="st pending">En cours</span></div>`).join("")}</div></div>`;
   }
   function render() {
     const t = now(); L.slotVf = Math.floor(t / VF_SLOT); L.slotHr = Math.floor(t / HR_SLOT); L.slotBtc = Math.floor(t / BTC_SLOT);
@@ -200,15 +226,16 @@ window.VPLive = function (core) {
     return false;
   }
   function click(t) {
-    if (t.dataset.lbet) {
-      const [g, n, k, o, lbl] = t.dataset.lbet.split("|"); const N = Number(n), T = now();
-      const closed = g === "vf" ? T >= vfMatch(N).ko : g === "hr" ? T >= hrRace(N).start : T >= N * BTC_SLOT;
-      if (closed) { toast("Trop tard, c'est parti ! Choisis la manche suivante."); core.rerender(true); return true; }
-      place(g, N, k, Number(o), lbl); return true;
+    if (t.dataset.lsel) {
+      const [g, n, k, o, lbl] = t.dataset.lsel.split("|"); const N = Number(n);
+      if (now() >= closeAt(g, N)) { toast("Trop tard, c'est parti ! Choisis la manche suivante."); core.rerender(true); return true; }
+      const mt = g === "vf" ? (() => { const m = vfMatch(N); return "⚡ " + m.h + " – " + m.a + " · " + hhmm(m.ko); })() : g === "hr" ? "⚡ Course de " + hhmm(hrRace(N).start) : "⚡ Bitcoin " + hhmm(N * BTC_SLOT) + "–" + hhmm((N + 1) * BTC_SLOT);
+      core.toggleLive({ live: 1, g, n: N, k, odd: Number(o), lbl, mt, lid: g + ":" + N });
+      return true;
     }
-    if (t.dataset.lst) { const [g, v] = t.dataset.lst.split(":"); L.stakes[g] = Number(v); document.querySelectorAll(`[data-lstake="${g}"]`).forEach((i) => (i.value = v)); return true; }
+    if (t.dataset.goparis) { core.goParis(); return true; }
     return false;
   }
   function input(e) { const g = e.target.dataset && e.target.dataset.lstake; if (!g) return false; L.stakes[g] = e.target.value; return true; }
-  return { render, tick, click, input, settle, pendingStake: () => bets().filter((b) => b.status === "pending").reduce((s, b) => s + (b.stake || 0), 0) };
+  return { render, tick, click, input, settle, legResult, ctx, closed: (l) => now() >= closeAt(l.g, l.n), pendingStake: () => bets().filter((b) => b.status === "pending").reduce((s, b) => s + (b.stake || 0), 0) };
 };

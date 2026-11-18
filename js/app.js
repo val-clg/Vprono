@@ -113,7 +113,9 @@ function settle(){
     if(b.status!=="pending")return;
     let lost=false,all=true;
     b.legs.forEach(l=>{
-      if(l.res)return; if(!l.d){l.res="void";return}
+      if(l.res)return;
+      if(l.live){const r=LIVE?LIVE.legResult(l):null;if(!r){all=false;return}l.res=r;changed=true;return}
+      if(!l.d){l.res="void";return}
       const m=findMatch(l.d,l.mid);
       if(!m){const doc=S.days[l.d];if(doc&&l.k&&Date.now()>l.k+6*3600000){l.res="void";changed=true}else all=false;return}
       const r=legResult(l.mk,m);if(!r){all=false;return}l.res=r;changed=true;
@@ -284,7 +286,7 @@ function renderSlip(){
   const fab=$("#fab");fab.hidden=!S.slip.length||(mobile&&S.slipOpen);
   if(S.slip.length)fab.innerHTML=`<i class="num">${S.slip.length}</i>Ticket <b class="num">@${slipOdds().toFixed(2)}</b>`;
   const n=S.slip.length,odds=slipOdds(),stake=Number(S.stake)||0,gain=Math.floor(stake*odds);
-  let err="";if(n){if(stake>S.me.balance)err="Pas assez de points.";else if(stake<1||!Number.isInteger(stake))err="Mise minimale : 1 pt (nombre entier)."}
+  let err="";if(n){if(stake>S.me.balance)err="Pas assez de points.";else if(slipHasLive()&&stake>100)err="100 pts maximum sur un ticket avec des paris flash.";else if(stake<1||!Number.isInteger(stake))err="Mise minimale : 1 pt (nombre entier)."}
   el.innerHTML=`<div class="slip-h" id="slipToggle"><h3>Ticket ${n>1?"combiné":""}</h3><span class="count num">${n}</span></div>
   <div class="slip-body">${n?S.slip.map((s,i)=>`<div class="leg"><div><div class="t">${esc(s.lbl)}</div><div class="s">${esc(s.mt)}</div></div><b class="num">${s.odd.toFixed(2)}</b><button class="x" data-rm="${i}" aria-label="Retirer">×</button></div>`).join(""):`<p class="empty">Ton ticket est vide.<br>Choisis une cote dans la liste des matchs.</p>`}
   ${n?`<div class="sum" style="margin-top:8px"><span>Cote totale</span><b class="num">${odds.toFixed(2)}</b></div>
@@ -304,23 +306,32 @@ function toggleOdd(d,mid,mk){
   else{if(S.slip.length>=10){toast("10 sélections maximum par combiné.");return}S.slip.push(leg)}
   renderMatchs();renderSlip();
 }
+function toggleLive(leg){
+  const i=S.slip.findIndex(s=>s.lid===leg.lid);
+  if(i>=0&&S.slip[i].k===leg.k)S.slip.splice(i,1);
+  else if(i>=0){S.slip[i]=leg;toast("Sélection remplacée : un seul pari par manche.")}
+  else{if(S.slip.length>=10){toast("10 sélections maximum par combiné.");return}S.slip.push(leg)}
+  renderMatchs();renderSlip();
+}
+const slipHasLive=()=>S.slip.some(s=>s.live);
 function place(){
   const stake=Number(S.stake);
   if(!S.slip.length||!Number.isInteger(stake)||stake<1||stake>S.me.balance)return;
-  const closed=S.slip.filter(s=>{const m=findMatch(s.d,s.mid);return !m||phase(m)!=="open"});
-  if(closed.length){S.slip=S.slip.filter(s=>!closed.includes(s));toast("Un match a commencé, il a été retiré du ticket.");renderAll();return}
+  if(slipHasLive()&&stake>100){toast("100 pts maximum sur un ticket avec des paris flash.");return}
+  const closed=S.slip.filter(s=>{if(s.live)return !LIVE||LIVE.closed(s);const m=findMatch(s.d,s.mid);return !m||phase(m)!=="open"});
+  if(closed.length){S.slip=S.slip.filter(s=>!closed.includes(s));toast("Un match ou une manche a commencé, retiré du ticket.");renderAll();return}
   // reprice to the latest odds
-  let moved=false;S.slip.forEach(s=>{const o=oddOf(findMatch(s.d,s.mid),s.mk);if(o&&o!==s.odd){s.odd=o;moved=true}});
+  let moved=false;S.slip.forEach(s=>{if(s.live)return;const o=oddOf(findMatch(s.d,s.mid),s.mk);if(o&&o!==s.odd){s.odd=o;moved=true}});
   if(moved){toast("Les cotes ont bougé. Vérifie ton ticket puis valide à nouveau.");renderSlip();return}
   const odds=slipOdds();
   S.me.balance-=stake;
-  S.me.bets.unshift({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),legs:S.slip.map(s=>({d:s.d,mid:s.mid,mk:s.mk,odd:s.odd,lbl:s.lbl,mt:s.mt,k:(findMatch(s.d,s.mid)||{}).k})),stake,odds,placedAt:Date.now(),status:"pending"});
+  S.me.bets.unshift({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),legs:S.slip.map(s=>s.live?{live:1,g:s.g,n:s.n,k:s.k,odd:s.odd,lbl:s.lbl,mt:s.mt}:{d:s.d,mid:s.mid,mk:s.mk,odd:s.odd,lbl:s.lbl,mt:s.mt,k:(findMatch(s.d,s.mid)||{}).k}),stake,odds,placedAt:Date.now(),status:"pending"});
   S.slip=[];S.slipOpen=false;save();toast("Pari validé : "+stake+" pts à "+odds.toFixed(2));renderAll();
 }
 
 /* ---------- My bets ---------- */
 function betCard(b){
-  const legs=b.legs.map(l=>{const m=l.d&&findMatch(l.d,l.mid);const sc=m&&m.sc;return`<div class="leg"><div><div class="t">${esc(l.lbl||(m?pickLabel(m,l.mk):l.mk))}</div><div class="s">${esc(l.mt||(m?m.h+" – "+m.a:"Ancien match de démo"))}${sc?" · "+sc[0]+"-"+sc[1]:""}</div></div><b class="num">${l.odd.toFixed(2)}</b><span class="dot ${l.res||""}" title="${l.res||"en cours"}"></span></div>`}).join("");
+  const legs=b.legs.map(l=>{const m=!l.live&&l.d&&findMatch(l.d,l.mid);const sc=m&&m.sc;return`<div class="leg"><div><div class="t">${esc(l.lbl||(m?pickLabel(m,l.mk):l.mk))}</div><div class="s">${esc(l.live&&LIVE?LIVE.ctx(l):l.mt||(m?m.h+" – "+m.a:"Ancien match de démo"))}${sc?" · "+sc[0]+"-"+sc[1]:""}</div></div><b class="num">${l.odd.toFixed(2)}</b><span class="dot ${l.res||""}" title="${l.res||"en cours"}"></span></div>`}).join("");
   const lab={pending:"En cours",won:"Gagné",lost:"Perdu",void:"Remboursé"}[b.status];
   return`<div class="glass panel bet"><div class="bet-h"><strong>${b.legs.length>1?"Combiné × "+b.legs.length:"Simple"}</strong><span class="st ${b.status}">${lab}</span></div>${legs}
   <div class="bet-f"><span>Mise <b class="num">${b.stake} pts</b> · cote <b class="num">${b.odds.toFixed(2)}</b></span><span>${b.status==="won"?"Gain <b class='num'>+"+b.payout+" pts</b>":b.status==="pending"?"Gain potentiel <b class='num'>"+Math.floor(b.stake*b.odds)+" pts</b>":b.status==="void"?"Mise rendue":"—"}</span>
@@ -536,6 +547,8 @@ const DUELS=window.VPDuels?window.VPDuels({S,esc,save,toast,
   bumpBalance:()=>renderHeader(),sendGlobal:(d)=>sendGlobal(d),quizBank:GAMES?GAMES.quizBank:[]}):null;
 
 const LIVE=window.VPLive?window.VPLive({S,esc,save,toast,bumpBalance:()=>renderHeader(),
+  toggleLive:leg=>toggleLive(leg),inSlip:(lid,k)=>S.slip.some(s=>s.lid===lid&&s.k===k),
+  onResults:()=>{if(settle())renderAll()},goParis:()=>setView("paris"),
   rerender:()=>{if(S.view==="matchs"&&S.matchMode==="live")renderMatchs()}}):null;
 
 /* ---------- Evening boosted odd + notifications ---------- */
@@ -755,7 +768,7 @@ document.addEventListener("input",e=>{
 renderAll();setView("matchs");
 setInterval(()=>{renderHeader();if(S.view==="matchs"&&S.matchMode!=="live")renderMatchs()},30000);
 setInterval(()=>{if(S.view==="matchs"&&S.matchMode==="live"&&!S.detail&&LIVE&&LIVE.tick())renderMatchs()},1000);
-setInterval(()=>{if(LIVE&&S.mode==="cloud")LIVE.settle()},15000);
+setInterval(()=>{if(LIVE&&S.mode==="cloud"){LIVE.settle();if(settle()){renderHeader();if(S.view==="paris")renderParis();if(S.view==="matchs")renderMatchs()}}},10000);
 setInterval(()=>{refreshPendingDays()},5*60000);
 
 (async function boot(){

@@ -9,6 +9,7 @@ window.VPGames = function (core) {
   const pay = (n) => { if (!Number.isInteger(n) || n < 1) { toast("Mise un nombre entier de points."); return false; } if (n > S.me.balance) { toast("Pas assez de points."); return false; } S.me.balance -= n; core.bumpBalance(); save(); return true; };
   const G = S.g || (S.g = {});
   const mem = (k) => (S.me[k] && typeof S.me[k] === "object" ? S.me[k] : (S.me[k] = {}));
+  const shuffle = (arr, r) => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }; // same order on every device
   function seeded(seed) { let h = 2166136261; for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); } return () => { h = Math.imul(h ^ (h >>> 15), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); h ^= h >>> 16; return (h >>> 0) / 4294967296; }; }
 
   /* ================= Loto Foot 7 ================= */
@@ -181,8 +182,8 @@ window.VPGames = function (core) {
     ["Quel club allemand joue au Signal Iduna Park ?", "Borussia Dortmund", ["Bayern Munich", "Schalke 04", "Bayer Leverkusen"]],
   ];
   function quizToday() {
-    const r = seeded("quiz" + today()); const idx = QUIZ.map((_, i) => i).sort(() => r() - 0.5).slice(0, 5);
-    return idx.map((i) => { const [q, a, w] = QUIZ[i]; const opts = [a, ...w].sort(() => r() - 0.5); return { q, a, opts }; });
+    const r = seeded("quiz" + today()); const idx = shuffle(QUIZ.map((_, i) => i), r).slice(0, 5);
+    return idx.map((i) => { const [q, a, w] = QUIZ[i]; const opts = shuffle([a, ...w], r); return { q, a, opts }; });
   }
   function quizRender() {
     const Q = mem("quiz");

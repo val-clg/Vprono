@@ -13,6 +13,7 @@ window.VPDuels = function (core) {
   const oppName = (d) => (d.a === me() ? d.b_pseudo || "Adversaire" : d.a_pseudo || "Adversaire");
   const hoursAgo = (t) => (Date.now() - Date.parse(t)) / 3600000;
 
+  const shuffle = (arr, r) => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }; // same order on every device
   /* ---------- rules ---------- */
   function penState(d) {
     const A = d.a_moves || [], B = d.b_moves || [], n = Math.min(A.length, B.length);
@@ -32,7 +33,7 @@ window.VPDuels = function (core) {
     const bank = core.quizBank || [];
     let h = 2166136261; for (const c of d.id) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); }
     const r = () => { h = Math.imul(h ^ (h >>> 15), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
-    return bank.map((_, i) => i).sort(() => r() - 0.5).slice(0, 5).map((i) => { const [q, a, w] = bank[i]; return { q, a, opts: [a, ...w].sort(() => r() - 0.5) }; });
+    return shuffle(bank.map((_, i) => i), r).slice(0, 5).map((i) => { const [q, a, w] = bank[i]; return { q, a, opts: shuffle([a, ...w], r) }; });
   }
   function quizState(d) {
     const A = d.a_moves || [], B = d.b_moves || [];
