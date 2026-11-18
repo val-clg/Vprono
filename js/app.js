@@ -584,7 +584,7 @@ async function checkNotifs(){
 }
 
 const CASINO=window.VPCasino?window.VPCasino({S,esc,save,toast,bumpBalance:()=>renderHeader(),rerender:()=>renderCasino()}):null;
-function renderCasino(){const v=$("#v-casino");if(!v)return;if(S.mode!=="cloud"){v.innerHTML=`<div><h2>🎰 Casino</h2></div><div class="glass panel empty">Connexion…</div>`;return}if(CASINO)v.innerHTML=CASINO.render()}
+function renderCasino(){const v=$("#v-casino");if(!v)return;if(S.mode!=="cloud"){v.innerHTML=`<div><h2>🎰 Casino</h2></div><div class="glass panel empty">Connexion…</div>`;return}if(CASINO){v.innerHTML=CASINO.render();CASINO.mount()}}
 
 /* ---------- Gifts from the creator ---------- */
 const giftQueue=[];let giftBusy=false;

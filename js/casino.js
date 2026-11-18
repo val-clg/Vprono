@@ -24,10 +24,11 @@ window.VPCasino = function (core) {
   function rlPay(key, n) { if (/^\d+$/.test(key)) return Number(key) === n ? 36 : 0; const o = OUT[key]; return o && o[1](n) ? o[0] + 1 : 0; }
   function rouletteHtml() {
     const R = C.rl, b = R.bets, chip = (k) => (b[k] ? `<i class="rchip num">${b[k]}</i>` : "");
-    const wheel = `conic-gradient(${WHEEL.map((n, i) => `${n === 0 ? "#1E9E57" : RED.has(n) ? "#D7263D" : "#1B1F2A"} ${(i * 360) / 37}deg ${((i + 1) * 360) / 37}deg`).join(",")})`;
     const nums = []; for (let r = 0; r < 12; r++) for (let c = 1; c <= 3; c++) { const n = r * 3 + c; nums.push(`<button class="rn ${color(n)}" data-rb="${n}">${n}${chip(String(n))}</button>`); }
-    return `<div class="rl-top"><div class="rwheel-box"><div class="rwheel" id="rlWheel" style="background:${wheel};transform:rotate(${R.rot}deg)">${WHEEL.map((n, i) => `<span style="transform:rotate(${(i + 0.5) * (360 / 37)}deg) translateY(-44%)">${n}</span>`).join("")}</div><div class="rhub"></div><div class="rpointer"></div></div>
-        <div class="rl-last"><span class="label">Derniers numéros</span><div>${R.last.map((n) => `<b class="rball ${color(n)}">${n}</b>`).join("") || `<span class="note">—</span>`}</div>${R.msg ? `<p class="gmsg">${esc(R.msg)}</p>` : ""}</div></div>
+    return `<div class="rl-stage"><canvas id="rlCanvas" aria-label="Roue de la roulette"></canvas>
+        <div class="rl-result" id="rlResult" ${R.show != null && !R.spinning ? "" : "hidden"}>${R.show != null ? `<b class="rball big ${color(R.show)}">${R.show}</b><span>${R.show === 0 ? "Zéro" : RED.has(R.show) ? "Rouge" : "Noir"}</span>` : ""}</div>
+        <button class="rl-sound" data-rsound="1" aria-label="${R.mute ? "Activer le son" : "Couper le son"}">${R.mute ? "🔇" : "🔊"}</button></div>
+      <div class="rl-last"><span class="label">Derniers numéros</span><div>${R.last.map((n) => `<b class="rball ${color(n)}">${n}</b>`).join("") || `<span class="note">—</span>`}</div>${R.msg ? `<p class="gmsg">${esc(R.msg)}</p>` : ""}</div>
       ${chips()}
       <div class="rtable"><button class="rn green zero" data-rb="0">0${chip("0")}</button>${nums.join("")}
         ${["c1", "c2", "c3"].map((k) => `<button class="rout" data-rb="${k}">2:1${chip(k)}</button>`).join("")}</div>
@@ -41,18 +42,108 @@ window.VPCasino = function (core) {
     const R = C.rl; if (R.spinning) return;
     if (rlTotal() + C.chip > MAX) { toast(MAX + " pts maximum par tour."); return; }
     if (rlTotal() + C.chip > S.me.balance) { toast("Pas assez de points."); return; }
-    R.bets[key] = (R.bets[key] || 0) + C.chip; R.msg = ""; rr();
+    R.bets[key] = (R.bets[key] || 0) + C.chip; R.msg = ""; R.show = null; W.glow = -1; rr();
+  }
+  /* --- animated wheel (canvas): the wheel turns one way, the ball the other, then drops into the drawn pocket --- */
+  const TAU = Math.PI * 2, SEG = TAU / 37;
+  const W = C.rw = C.rw || { wheel: 0, ball: null, ballR: 0, glow: -1, raf: 0 };
+  let audio = null;
+  function tick(vol, freq) {
+    if (C.rl.mute) return;
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.type = "triangle"; o.frequency.value = freq || 1800 + Math.random() * 600;
+      g.gain.setValueAtTime(vol || 0.05, audio.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 0.05);
+      o.connect(g).connect(audio.destination); o.start(); o.stop(audio.currentTime + 0.06);
+    } catch (_) {}
+  }
+  function drawWheel() {
+    const c = document.getElementById("rlCanvas"); if (!c) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1), size = Math.min(c.parentElement.clientWidth, 340);
+    if (c.width !== Math.round(size * dpr)) { c.width = Math.round(size * dpr); c.height = Math.round(size * dpr); c.style.width = size + "px"; c.style.height = size + "px"; }
+    const x = c.getContext("2d"), R0 = c.width / 2;
+    x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, c.width, c.height); x.translate(R0, R0);
+    // wooden rim + ball track
+    let g = x.createRadialGradient(0, 0, R0 * 0.82, 0, 0, R0); g.addColorStop(0, "#5A341A"); g.addColorStop(0.5, "#A86B35"); g.addColorStop(1, "#4A2A12");
+    x.fillStyle = g; x.beginPath(); x.arc(0, 0, R0 * 0.99, 0, TAU); x.fill();
+    g = x.createRadialGradient(0, 0, R0 * 0.70, 0, 0, R0 * 0.86); g.addColorStop(0, "#2A2F3A"); g.addColorStop(1, "#6B7280");
+    x.fillStyle = g; x.beginPath(); x.arc(0, 0, R0 * 0.86, 0, TAU); x.fill();
+    // rotating part
+    x.save(); x.rotate(W.wheel);
+    for (let i = 0; i < 37; i++) {
+      const n = WHEEL[i], a0 = -Math.PI / 2 + i * SEG - SEG / 2;
+      x.beginPath(); x.moveTo(0, 0); x.arc(0, 0, R0 * 0.74, a0, a0 + SEG); x.closePath();
+      x.fillStyle = n === 0 ? "#159A55" : RED.has(n) ? "#C8202F" : "#15181F"; x.fill();
+      if (W.glow === i) { x.fillStyle = "rgba(255,215,90,.55)"; x.fill(); }
+      x.strokeStyle = "rgba(230,190,110,.9)"; x.lineWidth = Math.max(1, R0 * 0.008); x.stroke();
+      x.save(); x.rotate(a0 + SEG / 2 + Math.PI / 2); x.fillStyle = "#fff"; x.font = `800 ${Math.round(R0 * 0.068)}px Inter, system-ui, sans-serif`; x.textAlign = "center"; x.textBaseline = "middle";
+      x.fillText(String(n), 0, -R0 * 0.665); x.restore();
+    }
+    // pocket ring + frets
+    x.beginPath(); x.arc(0, 0, R0 * 0.6, 0, TAU); x.fillStyle = "#2B1A0E"; x.fill();
+    for (let i = 0; i < 37; i++) { const a = -Math.PI / 2 + i * SEG - SEG / 2; x.beginPath(); x.moveTo(Math.cos(a) * R0 * 0.48, Math.sin(a) * R0 * 0.48); x.lineTo(Math.cos(a) * R0 * 0.6, Math.sin(a) * R0 * 0.6); x.strokeStyle = "#D9B26A"; x.lineWidth = R0 * 0.012; x.stroke(); }
+    // cone + turret
+    g = x.createRadialGradient(-R0 * 0.1, -R0 * 0.12, R0 * 0.05, 0, 0, R0 * 0.48); g.addColorStop(0, "#C98B4B"); g.addColorStop(1, "#5B3416");
+    x.beginPath(); x.arc(0, 0, R0 * 0.48, 0, TAU); x.fillStyle = g; x.fill();
+    x.strokeStyle = "#E8C27A"; x.lineWidth = R0 * 0.03; x.lineCap = "round";
+    for (let k = 0; k < 4; k++) { x.save(); x.rotate((k * Math.PI) / 2); x.beginPath(); x.moveTo(0, 0); x.lineTo(0, -R0 * 0.2); x.stroke(); x.beginPath(); x.arc(0, -R0 * 0.21, R0 * 0.025, 0, TAU); x.fillStyle = "#F3D99A"; x.fill(); x.restore(); }
+    g = x.createRadialGradient(-R0 * 0.02, -R0 * 0.02, 1, 0, 0, R0 * 0.07); g.addColorStop(0, "#FFF2C8"); g.addColorStop(1, "#B9883E");
+    x.beginPath(); x.arc(0, 0, R0 * 0.07, 0, TAU); x.fillStyle = g; x.fill();
+    x.restore();
+    // ball (world frame)
+    if (W.ball != null) {
+      const bx = Math.cos(W.ball - Math.PI / 2) * R0 * W.ballR, by = Math.sin(W.ball - Math.PI / 2) * R0 * W.ballR, br = R0 * 0.035;
+      x.beginPath(); x.arc(bx + br * 0.25, by + br * 0.35, br, 0, TAU); x.fillStyle = "rgba(0,0,0,.35)"; x.fill();
+      g = x.createRadialGradient(bx - br * 0.35, by - br * 0.35, br * 0.1, bx, by, br); g.addColorStop(0, "#fff"); g.addColorStop(1, "#BFC5CF");
+      x.beginPath(); x.arc(bx, by, br, 0, TAU); x.fillStyle = g; x.fill();
+    }
+  }
+  function animateSpin(n, done) {
+    const idx = WHEEL.indexOf(n), T = 8200, tDrop = 4300, tLand = 6100;
+    const w0 = W.wheel, wSpin = TAU * 2.2;                          // wheel: ~2 turns, slowing down
+    const wheelAt = (t) => w0 + wSpin * (1 - Math.pow(1 - Math.min(1, t / T), 2.4));
+    const pocket = idx * SEG;                                        // pocket angle in the wheel frame
+    const K = TAU * 9;                                               // ball laps relative to the wheel before landing
+    const R_TRACK = 0.79, R_POCKET = 0.54;
+    let lastBounce = 0, landed = false;
+    const t0 = performance.now();
+    cancelAnimationFrame(W.raf);
+    const frame = (now) => {
+      const t = now - t0, wa = wheelAt(t);
+      W.wheel = wa;
+      if (t < tLand) {
+        const u = t / tLand, rel = -K * Math.pow(1 - u, 3);          // relative angle -> 0 at landing, ball runs opposite at first
+        let jitter = 0, r = R_TRACK;
+        if (t > tDrop) {
+          const v = (t - tDrop) / (tLand - tDrop);                     // 0..1 while it falls and bounces on the frets
+          r = R_TRACK - (R_TRACK - R_POCKET) * Math.min(1, v * 1.3) + Math.abs(Math.sin(v * 22)) * 0.05 * (1 - v);
+          jitter = Math.sin(v * 31) * 0.06 * (1 - v);
+          if (t - lastBounce > 120 + v * 260) { lastBounce = t; tick(0.06 * (1 - v) + 0.015); }
+        } else if (t - lastBounce > 90) { lastBounce = t; tick(0.012, 900); }
+        W.ball = wa + pocket + rel + jitter; W.ballR = r;
+      } else {
+        if (!landed) { landed = true; tick(0.09, 1300); W.glow = idx; }
+        W.ball = wa + pocket; W.ballR = R_POCKET;
+      }
+      drawWheel();
+      if (t < T) W.raf = requestAnimationFrame(frame); else done();
+    };
+    W.raf = requestAnimationFrame(frame);
   }
   function rouletteSpin() {
     const R = C.rl, tot = rlTotal(); if (!tot || R.spinning || !take(tot)) return;
-    const n = rand(37), idx = WHEEL.indexOf(n), seg = 360 / 37;
-    R.spinning = true; R.rot = R.rot - (R.rot % 360) + 360 * 6 + (360 - (idx + 0.5) * seg); rr();
-    setTimeout(() => {
+    const n = rand(37);
+    R.spinning = true; R.show = null; W.glow = -1; rr();
+    const st = document.querySelector(".rl-stage"); if (st && st.scrollIntoView) st.scrollIntoView({ behavior: reduce() ? "auto" : "smooth", block: "center" });
+    const finish = () => {
       let win = 0; for (const [k, v] of Object.entries(R.bets)) win += v * rlPay(k, n);
-      R.spinning = false; R.last = [n].concat(R.last).slice(0, 10);
+      R.spinning = false; R.show = n; R.last = [n].concat(R.last).slice(0, 10);
       R.msg = `${n} ${n === 0 ? "vert" : RED.has(n) ? "rouge" : "noir"} · ${win ? "tu gagnes " + win + " pts !" : "perdu"}`;
       give(win); if (win) toast("🎰 Roulette : +" + win + " pts"); R.bets = {}; rr();
-    }, reduce() ? 200 : 4200);
+    };
+    if (reduce()) { W.wheel += 1; W.ball = W.wheel + WHEEL.indexOf(n) * SEG; W.ballR = 0.54; W.glow = WHEEL.indexOf(n); drawWheel(); setTimeout(finish, 300); }
+    else animateSpin(n, finish);
   }
 
   /* ================= Blackjack ================= */
@@ -199,6 +290,7 @@ window.VPCasino = function (core) {
     if (d.cchip) { const v = Number(d.cchip); if (d.ct === "rl") { C.chip = v; } else if (d.ct === "bj") C.bjBet = v; else if (d.ct === "sl") C.sl.bet = v; else if (d.ct === "mn") C.mnBet = v; rr(); return true; }
     if (d.rb != null) { rouletteBet(d.rb); return true; }
     if (d.rclear) { C.rl.bets = {}; rr(); return true; }
+    if (d.rsound) { C.rl.mute = !C.rl.mute; try { localStorage.setItem("vp-rl-mute", C.rl.mute ? "1" : ""); } catch (_) {} rr(); return true; }
     if (d.mcount) { C.mnCount = Number(d.mcount); rr(); return true; }
     if (d.mtile != null) { minesClick(Number(d.mtile)); return true; }
     const f = { rlSpin: rouletteSpin, bjDeal, bjHit, bjStand: bjNext, bjDouble, bjSplit, slSpin: slotsSpin, mnGo: minesStart, mnCash: minesCash }[t.id];
@@ -210,5 +302,8 @@ window.VPCasino = function (core) {
     if (id === "bjBet") C.bjBet = v; else if (id === "slBet") C.sl.bet = v; else if (id === "mnBet") C.mnBet = v; else return false;
     return true;
   }
-  return { render, click, input, leave() { if (C.mn && !C.mn.over && C.mn.open.size) minesCash(); } };
+  try { C.rl.mute = !!localStorage.getItem("vp-rl-mute"); } catch (_) {}
+  function mount() { if (C.game === "roulette") { if (W.ball == null && C.rl.last.length) { W.ball = W.wheel + WHEEL.indexOf(C.rl.last[0]) * SEG; W.ballR = 0.54; } drawWheel(); } }
+  window.addEventListener("resize", () => { if (C.game === "roulette" && !C.rl.spinning) drawWheel(); });
+  return { render, click, input, mount, leave() { if (C.mn && !C.mn.over && C.mn.open.size) minesCash(); } };
 };

@@ -364,6 +364,11 @@ footer p{max-width:70ch}
 .rwheel span{position:absolute;left:50%;top:50%;width:16px;margin-left:-8px;margin-top:-6px;text-align:center;font-size:8px;font-weight:800;color:#fff;transform-origin:50% 50%}
 .rhub{position:absolute;inset:34%;border-radius:50%;background:radial-gradient(circle at 35% 30%,#E8C27A,#8B5A2B);box-shadow:0 2px 6px rgba(0,0,0,.4)}
 .rpointer{position:absolute;left:50%;top:-6px;transform:translateX(-50%);border-left:8px solid transparent;border-right:8px solid transparent;border-top:16px solid var(--warm-1);filter:drop-shadow(0 2px 2px rgba(0,0,0,.3))}
+.rl-stage{position:relative;display:flex;justify-content:center;padding:6px 0}
+.rl-stage canvas{max-width:100%;border-radius:50%;box-shadow:0 18px 40px rgba(0,0,0,.35)}
+.rl-result{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 18px;border-radius:20px;background:rgba(10,12,20,.72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#fff;font-weight:800;animation:pop .35s cubic-bezier(.2,.9,.3,1.4);pointer-events:none}
+.rball.big{width:56px;height:56px;font-size:26px;font-family:var(--display);box-shadow:0 0 0 3px #fff}
+.rl-sound{position:absolute;right:4px;top:4px;width:38px;height:38px;border-radius:50%;border:1px solid var(--glass-edge);background:var(--glass-strong);font-size:16px}
 .rl-last>div{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
 .rball{width:28px;height:28px;border-radius:50%;display:inline-grid;place-items:center;font-size:12px;color:#fff}
 .rball.red,.rn.red,.rout.red{background:#D7263D}.rball.black,.rn.black,.rout.black{background:#1B1F2A}.rball.green,.rn.green{background:#1E9E57}
