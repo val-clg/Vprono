@@ -583,6 +583,9 @@ async function checkNotifs(){
     if(sub){S.notifOn=true;VP.push.save(S.uid,sub).catch(()=>{})}}catch(e){}
 }
 
+const CASINO=window.VPCasino?window.VPCasino({S,esc,save,toast,bumpBalance:()=>renderHeader(),rerender:()=>renderCasino()}):null;
+function renderCasino(){const v=$("#v-casino");if(!v)return;if(S.mode!=="cloud"){v.innerHTML=`<div><h2>🎰 Casino</h2></div><div class="glass panel empty">Connexion…</div>`;return}if(CASINO)v.innerHTML=CASINO.render()}
+
 /* ---------- Gifts from the creator ---------- */
 const giftQueue=[];let giftBusy=false;
 function watchGifts(){
@@ -665,7 +668,7 @@ function renderWelcome(){
   setTimeout(()=>{const i=$("#wPseudo");if(i)i.focus()},50);
 }
 function renderAll(){renderHeader();renderTabs();renderMatchs();renderSlip();renderParis();renderGroupes();renderJeux();renderClassement();renderWelcome()}
-function setView(v){const changed=S.view!==v;if(changed&&S.view==="jeux"&&GAMES){GAMES.unmount()}S.view=v;S.slipOpen=false;if(v==="groupes"){S.unread=0;renderTabs();S.chatJump=true;S.gJump=true;renderChat()}document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===v));if(v==="classement"){watchLeaderboard();renderClassement()}["matchs","paris","groupes","jeux","classement"].forEach(x=>{const el=$("#v-"+x);el.hidden=x!==v;if(x===v&&changed){el.classList.remove("enter");void el.offsetWidth;el.classList.add("enter")}});$("#slip").hidden=v!=="matchs"&&!S.slip.length;renderSlip();window.scrollTo({top:0});if(v==="jeux")renderJeux();if(v==="paris")renderParis()}
+function setView(v){const changed=S.view!==v;if(changed&&S.view==="jeux"&&GAMES){GAMES.unmount()}if(changed&&S.view==="casino"&&CASINO)CASINO.leave();S.view=v;S.slipOpen=false;if(v==="groupes"){S.unread=0;renderTabs();S.chatJump=true;S.gJump=true;renderChat()}document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===v));if(v==="classement"){watchLeaderboard();renderClassement()}if(v==="casino")renderCasino();["matchs","paris","groupes","jeux","classement","casino"].forEach(x=>{const el=$("#v-"+x);el.hidden=x!==v;if(x===v&&changed){el.classList.remove("enter");void el.offsetWidth;el.classList.add("enter")}});$("#slip").hidden=v!=="matchs"&&!S.slip.length;renderSlip();window.scrollTo({top:0});if(v==="jeux")renderJeux();if(v==="paris")renderParis()}
 function selectDay(d){S.day=d;S.detail=null;watchDay(d);renderMatchs()}
 
 $("#tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(b)setView(b.dataset.v)});
@@ -682,6 +685,7 @@ document.addEventListener("click",e=>{const r=e.target.closest("tr[data-player]"
 document.addEventListener("click",async e=>{
   const t=e.target.closest("button,[id=slipToggle]");if(!t)return;
   if(t.id==="giftOk"){$("#welcome").hidden=true;showGift();return}
+  if(S.view==="casino"&&CASINO&&CASINO.click(t))return;
   if(t.id==="pClose"){$("#welcome").hidden=true;return}
   if(t.id==="boostGo"){placeBoost();return}
   if(t.id==="notifOn"){enableNotifs();return}
@@ -723,6 +727,7 @@ document.addEventListener("click",async e=>{
 document.addEventListener("input",e=>{
   if(DUELS&&S.gameId==="duel"&&DUELS.input(e))return;
   if(LIVE&&LIVE.input(e))return;
+  if(S.view==="casino"&&CASINO&&CASINO.input(e))return;
   if(e.target.id==="chatIn")S.chatDraft=e.target.value;
   if(e.target.id==="gChatIn")S.gDraft=e.target.value;
   if(e.target.id==="stakeIn"){S.stake=e.target.value===""?"":Number(e.target.value);const pos=e.target.selectionStart;renderSlip();const i=$("#stakeIn");if(i){i.focus();try{i.setSelectionRange(pos,pos)}catch(_){}}}
