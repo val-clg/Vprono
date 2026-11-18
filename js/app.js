@@ -693,7 +693,7 @@ function showGift(){
   const g=giftQueue.shift();w.hidden=false;
   w.innerHTML=`<div class="card glass gift-card" role="dialog" aria-modal="true" aria-labelledby="gTitle"><div class="gift-box" aria-hidden="true">🎁</div>
     <h2 id="gTitle">Un cadeau pour toi !</h2><p class="sub">De la part de ${esc(g.from_label||"le créateur de Vprono")}</p>
-    ${g.amount?`<div class="gift num">+${g.amount} pts</div>`:""}${(g.items||[]).length&&FUT?`<p class="gift-items">${g.items.map(id=>{const it=FUT.item(id);return it?`<span class="pill star">${it.emoji?it.emoji+" ":""}${esc(it.name)}</span>`:""}).join(" ")}</p>`:""}${g.message?`<p class="gift-msg">« ${esc(g.message)} »</p>`:""}
+    ${g.amount?`<div class="gift num">+${g.amount} pts</div>`:""}${(g.items||[]).length&&FUT?`<p class="gift-items">${g.items.map(id=>{const it=FUT.item(id);return it?`<span class="pill star">${it.emoji?it.emoji+" ":""}${esc(it.name)}</span>`:/^pack:/.test(id)?`<span class="pill star">📦 Pack ${esc(id.slice(5)).replace("createur","Créateur")}</span>`:""}).join(" ")}</p>`:""}${g.message?`<p class="gift-msg">« ${esc(g.message)} »</p>`:""}
     <button class="cta" id="giftOk">Merci !</button></div>`;
 }
 

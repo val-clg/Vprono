@@ -8,5 +8,7 @@ window.VPRONO_CONFIG = {
   vapidPublicKey: "BNTjVyKcQxtxfEOH4GCGH0czOsD8gYqmTfFOa7sQq-KALEawK8o17Dsknelu58FqR3gRkibVXoNTHErhsn0alSU",
   // PayPal.me link used for Supporter purchases (cosmetic only)
   paypalMe: "https://paypal.me/CologneValentin",
+  // The creator's account id: shows the "👑 Créateur" tag next to this player's name (cannot be faked by other players)
+  creatorId: "84b9543d-f8d7-4481-9837-6f7b8e555265",
   donateUrl: "https://paypal.me/CologneValentin",
 };

@@ -37,6 +37,7 @@ window.VPFut = function (core) {
     or: { name: "Pack Or", price: 300, n: 5, odds: { c: 350, r: 420, e: 180, l: 42, i: 8 }, guard: "e", color: "#E8B923" },
     premium: { name: "Pack Premium", price: 800, n: 6, odds: { c: 0, r: 500, e: 350, l: 120, i: 30 }, guard: "e", color: "#9B5CFF" },
     icone: { name: "Pack Icône", price: 2500, n: 3, odds: { c: 0, r: 0, e: 400, l: 450, i: 150 }, guard: "l", color: "#F4E3B1" },
+    createur: { name: "Pack Créateur", price: 0, n: 7, odds: { c: 0, r: 0, e: 0, l: 550, i: 450 }, guard: "l", color: "#FF2D55", hidden: true },
   };
   function drawRarity(odds, min) {
     const ks = ORDER.filter((k) => ORDER.indexOf(k) >= ORDER.indexOf(min || "c") && odds[k] > 0);
@@ -47,6 +48,7 @@ window.VPFut = function (core) {
     const P = PACKS[kind]; const out = [];
     for (let i = 0; i < P.n; i++) out.push(drawRarity(P.odds, i === 0 && P.guard ? P.guard : "c"));
     if (kind === "icone" && rand(100) < 20) out[0] = "i";
+    if (kind === "createur") { out[0] = "i"; out[1] = "i"; out[2] = "i"; }   // 3 Icons guaranteed, the rest Légende or Icône
     const cards = out.map((r) => POOL[r][rand(POOL[r].length)]);
     cards.sort((a, b) => ORDER.indexOf(a.r) - ORDER.indexOf(b.r) || a.ovr - b.ovr);   // best card revealed last
     const O = owned(); const fresh = cards.map((c) => !O[c.id]);
@@ -182,6 +184,9 @@ window.VPFut = function (core) {
     { id: "fr_diamant", kind: "frame", name: "Cadre Diamant", css: "conic-gradient(#7FDBFF,#fff,#B19CFF,#7FDBFF)" },
     { id: "col_neon", kind: "color", name: "Pseudo Néon", css: "linear-gradient(90deg,#00F5A0,#00D9F5)", glow: 1 },
     { id: "fr_neon", kind: "frame", name: "Cadre Néon", css: "#00F5A0" },
+    { id: "col_createur", kind: "color", name: "Pseudo Créateur", css: "linear-gradient(90deg,#FFD700,#FF2D55,#FF8A00,#FFD700,#FF2D55)", anim: 1, glow: 1 },
+    { id: "fr_createur", kind: "frame", name: "Cadre Créateur", css: "conic-gradient(#FFD700,#FF2D55,#FF8A00,#FFF3B0,#FFD700)" },
+    { id: "bd_createur", kind: "badge", name: "Badge Fondateur", emoji: "🛠️" },
   ];
   const ITEM = Object.fromEntries(SHOP.concat(EXCLU).map((x) => [x.id, x]));
   function buyItem(id) {
@@ -198,9 +203,10 @@ window.VPFut = function (core) {
     return { color: has(e.color) ? ITEM[e.color] : null, frame: has(e.frame) ? ITEM[e.frame] : null, badge: has(e.badge) ? ITEM[e.badge] : null };
   }
   function nameHtml(name, data) {
-    const st = styleOf(data);
+    const st = styleOf(data), uid = data && (data.uid || (data === S.me ? S.uid : null));
+    const creator = uid && uid === (window.VPRONO_CONFIG || {}).creatorId ? ` <span class="creator-tag">👑 Créateur</span>` : "";
     const col = st.color ? ` class="vp-name ${st.color.anim ? "anim" : ""} ${st.color.glow ? "glow" : ""}" style="background-image:${st.color.css}"` : "";
-    return `<span${col}>${esc(name)}</span>${st.badge ? ` <span class="vp-badge" title="${esc(st.badge.name)}">${st.badge.emoji}</span>` : ""}`;
+    return `<span${col}>${esc(name)}</span>${st.badge ? ` <span class="vp-badge" title="${esc(st.badge.name)}">${st.badge.emoji}</span>` : ""}${creator}`;
   }
   function frameStyle(data) { const st = styleOf(data); return st.frame ? `box-shadow:0 0 0 3px var(--bg),0 0 0 6px transparent;background-clip:padding-box;outline:3px solid transparent;--fr:${st.frame.css}` : ""; }
   function frameClass(data) { return styleOf(data).frame ? "vp-framed" : ""; }
@@ -220,7 +226,7 @@ window.VPFut = function (core) {
       ${url ? `<a class="cta" href="${esc(url)}" target="_blank" rel="noopener" style="text-decoration:none;text-align:center">Payer ${p.eur.replace(".", ",")} € avec PayPal</a>` : ""}
       <button class="linkbtn" id="pClose">Fermer</button><p class="note">Achat 100 % cosmétique : aucun point, aucun pack, aucun avantage en jeu.</p></div>`;
   }
-  function onGiftItems(list) { (list || []).forEach((id) => { if (ITEM[id]) items()[id] = true; }); const any = (list || []).find((id) => ITEM[id]); if (any) { const k = ITEM[any].kind; if (!eq()[k]) eq()[k] = any; } }
+  function onGiftItems(list) { (list || []).forEach((id) => { if (ITEM[id]) items()[id] = true; else if (/^pack:/.test(id) && PACKS[id.slice(5)]) { const k = id.slice(5); inv()[k] = (inv()[k] || 0) + 1; } }); const any = (list || []).find((id) => ITEM[id]); if (any) { const k = ITEM[any].kind; if (!eq()[k]) eq()[k] = any; } }
 
   /* ---------- views ---------- */
   const V = { tab: "shop", filter: "all", sel: null };
@@ -236,7 +242,7 @@ window.VPFut = function (core) {
       return `<div class="shop-item glass">${prev}<b>${esc(x.name)}</b>${own ? `<button class="ghost" data-fequip="${x.kind}:${x.id}" ${eq()[x.kind] === x.id ? "disabled" : ""}>${eq()[x.kind] === x.id ? "Équipé" : "Équiper"}</button>` : `<button class="cta" data-fitem="${x.id}" ${S.me.balance < x.price ? "disabled" : ""}>${x.price} pts</button>`}</div>`; };
     return `${mine.length ? `<h3>🎁 Mes packs</h3><div class="pack-list">${mine.map((k) => packTile(k, I[k])).join("")}</div>` : ""}
       <h3>Packs de cartes</h3><p class="sub">Les vraies stars du foot et les Icônes de légende. Les doublons se revendent dans ta collection.</p>
-      <div class="pack-list">${Object.keys(PACKS).map((k) => packTile(k)).join("")}</div>
+      <div class="pack-list">${Object.keys(PACKS).filter((k) => !PACKS[k].hidden).map((k) => packTile(k)).join("")}</div>
       <h3>Style</h3><p class="sub">Couleurs de pseudo, cadres et badges, visibles au classement et dans le chat.</p>
       <div class="shop-grid">${SHOP.map(it).join("")}</div>
       <h3>💎 Soutenir Vprono</h3><p class="sub">Des objets exclusifs pour ceux qui veulent aider l'appli. 100 % cosmétique : aucun point, aucun pack, aucun avantage en jeu.</p>
