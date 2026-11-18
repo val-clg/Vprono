@@ -79,6 +79,16 @@ create policy "match days are public" on public.days for select to anon, authent
 drop policy if exists "meta is public" on public.meta;
 create policy "meta is public" on public.meta for select to anon, authenticated using (true);
 
+-- ---------- Table privileges (newer projects do not grant them automatically) ----------
+grant usage on schema public to anon, authenticated, service_role;
+grant all on public.players, public.groups, public.messages, public.days, public.meta to service_role;
+grant select, insert, update on public.players to authenticated;
+grant select, insert on public.groups to authenticated;
+grant select, insert on public.messages to authenticated;
+grant select on public.days, public.meta to anon, authenticated;
+grant usage, select on all sequences in schema public to authenticated, service_role;
+grant execute on function public.is_member(text) to authenticated;
+
 -- ---------- Live updates ----------
 do $$
 declare t text;

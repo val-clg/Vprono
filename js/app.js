@@ -297,6 +297,10 @@ function betCard(b){
   <div class="bet-f"><span>Mise <b class="num">${b.stake} pts</b> · cote <b class="num">${b.odds.toFixed(2)}</b></span><span>${b.status==="won"?"Gain <b class='num'>+"+b.payout+" pts</b>":b.status==="pending"?"Gain potentiel <b class='num'>"+Math.floor(b.stake*b.odds)+" pts</b>":b.status==="void"?"Mise rendue":"—"}</span>
   ${S.mode==="cloud"&&S.me.groups.length?`<button class="linkbtn" data-share="${b.id}">Partager dans ${esc((S.groupsMeta[S.activeGroup||S.me.groups[0]]||{}).name||"mon groupe")}</button>`:""}</div></div>`;
 }
+function donateCard(){
+  const url=(window.VPRONO_CONFIG||{}).donateUrl;if(!url||!/^https:\/\//.test(url))return"";
+  return`<div class="glass panel support"><div class="support-in"><div class="support-heart" aria-hidden="true">♥</div><div><h3>Soutenir Vprono</h3><p class="sub">Vprono est gratuit et sans pub pour les paris d'argent. Un petit don aide à payer le serveur et les nouvelles fonctions. Les dons ne donnent aucun point ni avantage dans le jeu.</p></div></div><a class="cta support-btn" href="${esc(url)}" target="_blank" rel="noopener">Faire un don</a></div>`;
+}
 function renderParis(){
   const st=S.me.stats,pend=S.me.bets.filter(b=>b.status==="pending"),done=S.me.bets.filter(b=>b.status!=="pending");
   const rate=st.won+st.lost?Math.round(100*st.won/(st.won+st.lost))+" %":"–";
@@ -306,7 +310,8 @@ function renderParis(){
   <div class="subtabs"><button data-bt="pending" aria-pressed="${S.betsTab==="pending"}">En cours (${pend.length})</button><button data-bt="done" aria-pressed="${S.betsTab==="done"}">Terminés (${done.length})</button></div>
   ${list.length?list.map(betCard).join(""):`<div class="glass panel empty">${S.betsTab==="pending"?"Aucun pari en cours. Va dans Matchs pour en placer un.":"Pas encore de pari terminé."}</div>`}
   <div class="glass panel"><label class="label" for="pseudo">Ton pseudo (visible dans tes groupes et au classement)</label><div class="form" style="margin-top:6px"><input id="pseudo" maxlength="24" placeholder="ex. Le Roi du Nul" value="${esc(S.me.pseudo)}"><button class="ghost" id="savePseudo">Enregistrer</button></div></div>
-  <div class="glass panel"><div class="row-between"><div><span class="label">Compte</span><div style="font-weight:600;position:relative">${esc(S.email||"")}</div></div><div style="display:flex;gap:8px;flex-wrap:wrap">${window.VPInstall&&!VPInstall.standalone()?`<button class="ghost" id="installApp">Installer l'appli</button>`:""}<button class="ghost" id="logout">Se déconnecter</button></div></div></div>`;
+  <div class="glass panel"><div class="row-between"><div><span class="label">Compte</span><div style="font-weight:600;position:relative">${esc(S.email||"")}</div></div><div style="display:flex;gap:8px;flex-wrap:wrap">${window.VPInstall&&!VPInstall.standalone()?`<button class="ghost" id="installApp">Installer l'appli</button>`:""}<button class="ghost" id="logout">Se déconnecter</button></div></div></div>
+  ${donateCard()}`;
 }
 
 /* ---------- Groups + chat ---------- */
