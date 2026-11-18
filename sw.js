@@ -1,5 +1,5 @@
 /* Vprono service worker: the app shell works offline and updates itself in the background. */
-const VERSION = "vprono-v8";
+const VERSION = "vprono-v9";
 const SHELL = ["./", "index.html", "config.js", "manifest.webmanifest", "js/store.js", "js/install.js", "js/auth.js", "js/games.js", "js/duels.js", "js/live.js", "js/casino.js", "js/app.js",
   "vendor/supabase-2.45.4.js", "vendor/591.supabase.js", "icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"];
 

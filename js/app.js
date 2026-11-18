@@ -578,8 +578,25 @@ async function enableNotifs(){
     await VP.push.save(S.uid,sub);S.notifOn=true;toast("🔔 C'est noté : tu recevras la cote boostée chaque soir.");renderAll();
   }catch(e){toast("Impossible d'activer les notifications sur cet appareil.")}
 }
+/* Ask once per device, right after launch; the choice is remembered and never asked again. */
+function notifAsked(){try{return !!localStorage.getItem("vp-notif-asked")}catch(_){return false}}
+function setNotifAsked(v){try{localStorage.setItem("vp-notif-asked",v)}catch(_){}}
+function maybeAskNotifs(tries=0){
+  if(!(window.VPRONO_CONFIG||{}).vapidPublicKey||!pushSupported()||S.notifOn||notifAsked())return;
+  if(Notification.permission!=="default"){setNotifAsked(Notification.permission);return}
+  if(isIOS&&window.VPInstall&&!VPInstall.standalone())return;      // iPhone: only possible from the installed app
+  const w=$("#welcome");
+  if(!w.hidden){if(tries<20)setTimeout(()=>maybeAskNotifs(tries+1),3000);return}  // wait for gift / welcome windows
+  w.hidden=false;
+  w.innerHTML=`<div class="card glass notif-card" role="dialog" aria-modal="true" aria-labelledby="nTitle"><div class="gift-box" aria-hidden="true">🔔</div>
+    <h2 id="nTitle">Active les notifications</h2>
+    <p class="sub">Reçois chaque soir la <b>🔥 cote boostée</b> et les grosses annonces de Vprono. Pas de spam, promis.</p>
+    <button class="cta" id="notifYes">Oui, activer</button><button class="linkbtn" id="notifNo" style="align-self:center">Non merci</button></div>`;
+}
+
 async function checkNotifs(){
   try{if(!pushSupported()||Notification.permission!=="granted")return;const reg=await navigator.serviceWorker.ready;const sub=await reg.pushManager.getSubscription();
+    if(!sub&&(window.VPRONO_CONFIG||{}).vapidPublicKey)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64u(VPRONO_CONFIG.vapidPublicKey)});
     if(sub){S.notifOn=true;VP.push.save(S.uid,sub).catch(()=>{})}}catch(e){}
 }
 
@@ -600,7 +617,7 @@ function watchGifts(){
   });
 }
 function showGift(){
-  const w=$("#welcome");if(!w.hidden||!giftQueue.length)return;
+  const w=$("#welcome");if(!giftQueue.length)return;if(!w.hidden){setTimeout(showGift,2500);return}
   const g=giftQueue.shift();w.hidden=false;
   w.innerHTML=`<div class="card glass gift-card" role="dialog" aria-modal="true" aria-labelledby="gTitle"><div class="gift-box" aria-hidden="true">🎁</div>
     <h2 id="gTitle">Un cadeau pour toi !</h2><p class="sub">De la part de ${esc(g.from_label||"le créateur de Vprono")}</p>
@@ -656,7 +673,7 @@ function renderClassement(){
 }
 function renderWelcome(){
   const w=$("#welcome");
-  if(w.querySelector(".gift-card,.player-card"))return;
+  if(w.querySelector(".gift-card,.player-card,.notif-card"))return;
   if(S.mode!=="cloud"||S.me.pseudo||S.welcomeDone||!S.canWrite){w.hidden=true;return}
   w.hidden=false;
   w.innerHTML=`<div class="card glass" role="dialog" aria-modal="true" aria-labelledby="wTitle"><div class="brand" style="justify-content:center;font-size:26px"><svg class="logo big" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="vpg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2F7BFF"/><stop offset=".55" stop-color="#7B5CFF"/><stop offset="1" stop-color="#FF4D8D"/></linearGradient><linearGradient id="vph2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient></defs><rect x="2" y="2" width="60" height="60" rx="18" fill="url(#vpg2)"/><rect x="2" y="2" width="60" height="30" rx="18" fill="url(#vph2)"/><path d="M15 17l13 30 11-25" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="45" cy="17" r="7.5" fill="#fff"/><path d="M45 12.6l3.6 2.6-1.4 4.2h-4.4l-1.4-4.2z" fill="#1B1F3B"/></svg><span>V<i>prono</i></span></div>
@@ -689,6 +706,8 @@ document.addEventListener("click",async e=>{
   if(t.id==="pClose"){$("#welcome").hidden=true;return}
   if(t.id==="boostGo"){placeBoost();return}
   if(t.id==="notifOn"){enableNotifs();return}
+  if(t.id==="notifYes"){$("#welcome").hidden=true;setNotifAsked("yes");enableNotifs();return}
+  if(t.id==="notifNo"){$("#welcome").hidden=true;setNotifAsked("no");toast("Pas de souci. Tu pourras les activer plus tard dans l'onglet Paris.");return}
   if(t.dataset.mmode){S.matchMode=t.dataset.mmode;try{localStorage.setItem("vp-mmode",S.matchMode)}catch(_){}renderMatchs();return}
   if(S.view==="matchs"&&S.matchMode==="live"&&LIVE&&LIVE.click(t))return;
   if(t.id==="pDuel"){$("#welcome").hidden=true;setView("jeux");openGame("duel");if(DUELS)DUELS.challenge({id:t.dataset.uid,pseudo:t.dataset.name});renderJeux();return}
@@ -759,7 +778,7 @@ setInterval(()=>{refreshPendingDays()},5*60000);
   if(S.me.groups.length)openGroup(S.me.groups[0]);
   watchGlobal();watchLeaderboard();if(LIVE)LIVE.settle();
   if(DUELS)DUELS.watch();
-  watchGifts();watchBoost();checkNotifs();
+  watchGifts();watchBoost();checkNotifs().then(()=>setTimeout(maybeAskNotifs,1800));
   refreshPendingDays();
 })();
 })();
