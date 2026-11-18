@@ -26,6 +26,10 @@ Paris sportifs entre potes, avec les vrais matchs et zéro euro en jeu. Appli we
 2. **Hébergement** (gratuit) : GitHub Pages (*Settings → Pages → Deploy from a branch → main / root*) ou Vercel / Netlify (import du dépôt, aucun build).
 3. **Mise à jour des matchs** : `sync/sync.py` (voir plus bas), lancé par une tâche planifiée Claude 3 fois par jour.
 
+## Publier une nouvelle version
+
+Avant chaque envoi sur GitHub : `python3 tools/bump.py`. Le numéro de version change dans `version.json`, `index.html` et `sw.js` ; les applis installées le détectent au lancement (rechargement automatique) ou affichent un bandeau « Mettre à jour ».
+
 ## Mise à jour des matchs
 
 ```

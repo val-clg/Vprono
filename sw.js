@@ -1,10 +1,10 @@
 /* Vprono service worker: the app shell works offline and updates itself in the background. */
-const VERSION = "vprono-v12";
+const VERSION = "vprono-v13";
 const SHELL = ["./", "index.html", "config.js", "manifest.webmanifest", "js/store.js", "js/install.js", "js/auth.js", "js/games.js", "js/duels.js", "js/live.js", "js/casino.js", "js/cards-data.js", "js/fut.js", "js/app.js",
   "vendor/supabase-2.45.4.js", "vendor/591.supabase.js", "icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"];
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: "reload" })))).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", (e) => {
   e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
@@ -21,9 +21,10 @@ self.addEventListener("fetch", (e) => {
     return;
   }
   if (url.origin !== location.origin) return;
+  if (url.pathname.endsWith("/version.json")) return;
   // app files: network first so updates show up at once, cache as offline fallback
   e.respondWith(
-    fetch(req).then((r) => { if (r.ok) { const copy = r.clone(); caches.open(VERSION).then((c) => c.put(req, copy)); } return r; })
+    fetch(req, { cache: "no-cache" }).then((r) => { if (r.ok) { const copy = r.clone(); caches.open(VERSION).then((c) => c.put(req, copy)); } return r; })
       .catch(async () => (await caches.match(req)) || (req.mode === "navigate" ? caches.match("index.html") : Response.error()))
   );
 });
