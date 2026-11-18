@@ -309,5 +309,11 @@ window.VPFut = function (core) {
     if (d.fsup) { requestPurchase(d.fsup); return true; }
     return false;
   }
-  return { render, click, track, claimable, nameHtml, frameClass, styleOf, onGiftItems, count: () => CARDS.length, item: (id) => ITEM[id] };
+  function summary() {
+    const I = inv(), packs = Object.keys(PACKS).reduce((s, k) => s + (I[k] || 0), 0), o = obj();
+    const best = CARDS.filter((c) => owned()[c.id]).sort((a, b) => ORDER.indexOf(b.r) - ORDER.indexOf(a.r) || b.ovr - a.ovr)[0];
+    return { packs, have: Object.keys(owned()).length, total: CARDS.length, claim: claimable(), dailyDone: DAILY.filter((x) => (o.d[x.ev] || 0) >= x.n).length, dailyTotal: DAILY.length,
+      best: best ? cardHtml(best) : "", nextDaily: DAILY.find((x) => (o.d[x.ev] || 0) < x.n) };
+  }
+  return { render, click, track, claimable, summary, setTab: (t) => { V.tab = t; }, nameHtml, frameClass, styleOf, onGiftItems, count: () => CARDS.length, item: (id) => ITEM[id] };
 };

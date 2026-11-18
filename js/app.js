@@ -304,7 +304,7 @@ function toggleOdd(d,mid,mk){
   if(i>=0&&S.slip[i].mk===mk)S.slip.splice(i,1);
   else if(i>=0){S.slip[i]=leg;toast("Sélection remplacée : un seul pari par match.")}
   else{if(S.slip.length>=10){toast("10 sélections maximum par combiné.");return}S.slip.push(leg)}
-  renderMatchs();renderSlip();
+  renderMatchs();renderSlip();if(S.view==="accueil")renderHome();
 }
 function toggleLive(leg){
   const i=S.slip.findIndex(s=>s.lid===leg.lid);
@@ -379,7 +379,7 @@ function watchGlobal(){
     S.gmsgs=snap.docs.map(d=>d.data()).reverse();
     const fresh=S.gmsgs.filter(m=>m.ts>lastTs&&m.u!==S.uid).length;
     if(!first&&fresh&&!(S.view==="groupes"&&S.social==="global")){S.unread+=fresh;renderTabs()}
-    first=false;renderChat();
+    first=false;renderChat();if(S.view==="accueil")renderHome();
   },()=>{});
 }
 async function sendGlobal(data){
@@ -393,8 +393,7 @@ function renderGroupes(){
   if(S.mode!=="cloud"){v.innerHTML=`<div><h2>Groupes</h2></div><div class="glass panel empty">${S.mode==="loading"?"Connexion…":"Connecte-toi pour jouer avec tes amis."}</div>`;return}
   const g=S.activeGroup,meta=g&&S.groupsMeta[g];
   const soc=S.social||"global";
-  const head=`<div><h2>Social</h2><p class="sub">Discute avec tous les joueurs de Vprono, ou affronte tes potes dans vos groupes.</p></div>
-  <div class="seg glass"><button data-social="global" aria-pressed="${soc==="global"}">🌍 Chat général</button><button data-social="groups" aria-pressed="${soc==="groups"}">👥 Mes groupes</button></div>`;
+  const head=socialNav(soc)+`<div><h2>${soc==="global"?"Chat général":"Mes groupes"}</h2><p class="sub">${soc==="global"?"Discute avec tous les joueurs de Vprono.":"Affronte tes potes dans vos groupes privés."}</p></div>`;
   if(soc==="global"){
     v.innerHTML=head+`<div class="glass panel chat chat-global"><div class="row-between"><h3>Tous les joueurs</h3><span class="note">Reste cool : pas d'insultes, pas de pub.</span></div><div class="msgs" id="gmsgs"></div>
       <form class="form" id="gChatForm"><input id="gChatIn" maxlength="${MSG_MAX}" placeholder="${S.me.pseudo?"Message à tout le monde…":"Choisis un pseudo pour écrire"}" autocomplete="off" value="${esc(S.gDraft||"")}"><button class="cta" ${S.canWrite?"":"disabled"}>Envoyer</button></form></div>`;
@@ -494,7 +493,7 @@ let upcomingLoading=false;
 function loadUpcoming(){
   if(upcomingLoading||!S.db||!S.meta)return;upcomingLoading=true;
   const ds=dayList().filter(d=>d>=today()).slice(0,5);
-  loadDays(ds).then(()=>{upcomingLoading=false;if(S.view==="jeux")renderJeux()});
+  loadDays(ds).then(()=>{upcomingLoading=false;if(S.view==="jeux")renderJeux();if(S.view==="accueil")renderHome()});
 }
 function renderJeux(){
   const v=$("#v-jeux");
@@ -508,7 +507,7 @@ function renderJeux(){
     return;
   }
   const n=dailyCount();
-  v.innerHTML=`<div><h2>Mini-jeux</h2><p class="sub">${n?`<b>${n}</b> jeu${n>1?"x":""} gratuit${n>1?"s":""} à faire aujourd'hui.`:"Tous tes bonus du jour sont faits. Reviens demain !"}</p></div>${rescue}
+  v.innerHTML=jeuxNav("jeux")+`<div><h2>Mini-jeux</h2><p class="sub">${n?`<b>${n}</b> jeu${n>1?"x":""} gratuit${n>1?"s":""} à faire aujourd'hui.`:"Tous tes bonus du jour sont faits. Reviens demain !"}</p></div>${rescue}
   <div class="tiles">${allGames().map(g=>{const free=g.daily&&g.daily();return`<button class="tile glass" data-game="${g.id}"><span class="game-ic" aria-hidden="true">${g.icon}</span><b>${esc(g.title)}</b><small>${esc(g.desc)}</small>${free?`<span class="pill star">Dispo</span>`:""}</button>`}).join("")}</div>`;
 }
 function openGame(id){if(GAMES)GAMES.unmount();if(id==="duel"&&DUELS)DUELS.open();S.gameId=id;renderJeux();const v=$("#v-jeux");v.classList.remove("enter");void v.offsetWidth;v.classList.add("enter");window.scrollTo({top:0})}
@@ -554,7 +553,7 @@ const LIVE=window.VPLive?window.VPLive({S,esc,save,toast,bumpBalance:()=>renderH
 
 /* ---------- Evening boosted odd + notifications ---------- */
 const BOOST_MAX=20;
-function watchBoost(){if(VP.boosts)VP.boosts.watch(today(),doc=>{S.boost=doc;if(doc&&doc.d)loadDays([doc.d]).then(()=>{if(S.view==="matchs")renderMatchs()});if(S.view==="matchs")renderMatchs()})}
+function watchBoost(){if(VP.boosts)VP.boosts.watch(today(),doc=>{S.boost=doc;if(doc&&doc.d)loadDays([doc.d]).then(()=>{if(S.view==="matchs")renderMatchs();if(S.view==="accueil")renderHome()});if(S.view==="matchs")renderMatchs();if(S.view==="accueil")renderHome()})}
 function boostCard(){
   const b=S.boost;if(!b)return"";
   const m=findMatch(b.d,b.mid),ph=m?phase(m):"open",taken=S.me.boostDay===b.date;
@@ -615,7 +614,9 @@ async function checkNotifs(){
 }
 
 const CASINO=window.VPCasino?window.VPCasino({S,esc,save,toast,bumpBalance:()=>renderHeader(),rerender:()=>renderCasino(),track:(e)=>track(e)}):null;
-function renderCasino(){const v=$("#v-casino");if(!v)return;if(S.mode!=="cloud"){v.innerHTML=`<div><h2>🎰 Casino</h2></div><div class="glass panel empty">Connexion…</div>`;return}if(CASINO){v.innerHTML=CASINO.render();CASINO.mount()}}
+function renderCasino(){const v=$("#v-casino");if(!v)return;if(S.mode!=="cloud"){v.innerHTML=`<div><h2>🎰 Casino</h2></div><div class="glass panel empty">Connexion…</div>`;return}if(CASINO){v.innerHTML=jeuxNav("casino")+CASINO.render();CASINO.mount()}}
+function jeuxNav(cur){return`<div class="seg glass sub-nav"><button data-go="jeux" aria-pressed="${cur==="jeux"}">🕹️ Mini-jeux</button><button data-go="casino" aria-pressed="${cur==="casino"}">🎰 Casino</button></div>`}
+function socialNav(cur){return`<div class="seg glass sub-nav"><button data-social="global" aria-pressed="${cur==="global"}">🌍 Chat</button><button data-social="groups" aria-pressed="${cur==="groups"}">👥 Groupes</button><button data-go="classement" aria-pressed="${cur==="classement"}">🏆 Classement</button></div>`}
 
 const FUT=window.VPFut?window.VPFut({S,esc,save,toast,today,mode:()=>S.mode,bumpBalance:()=>renderHeader(),
   rerender:()=>renderShop(),renderBadges:()=>renderTabs(),
@@ -625,6 +626,54 @@ const track=(ev,k)=>{if(FUT)FUT.track(ev,k)};
 function renderShop(){const v=$("#v-shop");if(!v)return;if(S.mode!=="cloud"){v.innerHTML=`<div><h2>Club Vprono</h2></div><div class="glass panel empty">Connexion…</div>`;return}if(FUT)v.innerHTML=FUT.render()}
 function dataOf(uid){if(uid===S.uid)return S.me;const p=(S.lb||[]).find(x=>x.uid===uid)||(S.members||[]).find(x=>x.uid===uid);return p||null}
 function styledName(name,uid){return FUT?FUT.nameHtml(name,dataOf(uid)):esc(name)}
+
+/* ---------- Home ---------- */
+function upcoming(n){const out=[];for(const d of dayList()){if(d<today())continue;const doc=S.days[d];if(!doc){loadUpcoming();break}for(const m of doc.matches)if(phase(m)==="open"&&m.odds)out.push({m,d});if(out.length>=n)break}return out.sort((a,b)=>(a.m.l==="CL"?0:1)-(b.m.l==="CL"?0:1)||a.m.k-b.m.k).slice(0,n)}
+function renderHome(){
+  const v=$("#v-accueil");if(!v)return;
+  if(S.mode!=="cloud"){v.innerHTML=`<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>`;return}
+  const name=S.me.pseudo||"toi",lb=S.lb||[],rank=lb.findIndex(p=>p.uid===S.uid)+1;
+  const fs=FUT?FUT.summary():{packs:0,have:0,total:0,claim:0,dailyDone:0,dailyTotal:0,best:""};
+  const duelTodo=DUELS?DUELS.todo():0,F=featured();
+  const todo=[
+    fs.packs?{ic:"🎁",t:`${fs.packs} pack${fs.packs>1?"s":""} à ouvrir`,s:"Dans le Club",go:"shop:shop"}:null,
+    fs.claim?{ic:"🏅",t:`${fs.claim} récompense${fs.claim>1?"s":""} à récupérer`,s:"Objectifs terminés",go:"shop:obj"}:null,
+    duelTodo?{ic:"⚔️",t:`${duelTodo} duel${duelTodo>1?"s":""} t'attend${duelTodo>1?"ent":""}`,s:"À toi de jouer",go:"jeux:duel"}:null,
+    S.boost&&S.me.boostDay!==S.boost.date?{ic:"🔥",t:"Cote boostée du soir",s:`${S.boost.lbl} · ${Number(S.boost.base).toFixed(2)} → ${Number(S.boost.odd).toFixed(2)}`,go:"matchs"}:null,
+    {ic:"🎡",t:"Roue du jour",s:S.me.lastSpin===today()?"Déjà tournée":"Un tour gratuit",go:"jeux:wheel",done:S.me.lastSpin===today()},
+    {ic:"🧠",t:"Quiz foot",s:(S.me.quiz||{}).day===today()&&S.me.quiz.done?"Fait aujourd'hui":"5 questions, jusqu'à 60 pts",go:"jeux:quiz",done:(S.me.quiz||{}).day===today()&&S.me.quiz.done},
+    {ic:"🪙",t:"Ticket à gratter",s:(S.me.scratch||{}).day===today()?"Gratté aujourd'hui":"Gratuit",go:"jeux:scratch",done:(S.me.scratch||{}).day===today()},
+    F&&phase(F.m)==="open"&&!S.me.picks[F.m.id]?{ic:"🎯",t:"Score exact de l'affiche",s:`${tshort(F.m.h)} – ${tshort(F.m.a)} · +${SCORE_BONUS} pts`,go:"jeux:exact"}:null,
+  ].filter(Boolean).sort((a,b)=>(a.done?1:0)-(b.done?1:0));
+  const nx=upcoming(3);
+  const g=(S.gmsgs||[]).slice(-2);
+  v.innerHTML=`<div class="home-hero"><div><h2>Salut ${esc(name)} 👋</h2><p class="sub">${new Intl.DateTimeFormat("fr-FR",{weekday:"long",day:"numeric",month:"long",timeZone:tz}).format(Date.now())}</p></div>
+    <div class="home-stats"><button data-go="paris"><small>Solde</small><b class="num">${S.me.balance}</b></button><button data-go="classement"><small>Classement</small><b class="num">${rank?"#"+rank:"–"}</b></button><button data-go="shop:coll"><small>Cartes</small><b class="num">${fs.have}</b></button></div></div>
+  ${boostCard()}
+  <div class="home-grid">
+    <div class="hcard glass club-card"><div class="hcard-h"><h3>🃏 Club Vprono</h3><button class="linkbtn" data-go="shop:shop">Boutique ›</button></div>
+      <div class="club-row">${fs.best||`<div class="fcard r-i locked"><div class="fc-top"><b>?</b></div><div class="fc-name">Ta 1re carte</div></div>`}<div class="club-meta"><b>${fs.have} / ${fs.total} cartes</b><div class="coll-bar"><i style="width:${fs.total?fs.have/fs.total*100:0}%"></i></div>
+      <small class="note">Objectifs du jour : ${fs.dailyDone}/${fs.dailyTotal}${fs.nextDaily?" · prochain : "+esc(fs.nextDaily.label.toLowerCase()):""}</small></div></div>
+      <div class="mini-tiles"><button data-go="shop:shop"><span class="ic">📦</span><b>Packs</b><small>${fs.packs?fs.packs+" à ouvrir":"Dès 40 pts"}</small>${fs.packs?`<span class="pill star">${fs.packs}</span>`:""}</button><button data-go="shop:obj"><span class="ic">🎯</span><b>Objectifs</b><small>Gagne des packs</small>${fs.claim?`<span class="pill star">${fs.claim}</span>`:""}</button><button data-go="shop:coll"><span class="ic">📒</span><b>Collection</b><small>${fs.have} cartes</small></button><button data-go="shop:style"><span class="ic">✨</span><b>Mon style</b><small>Skins et badges</small></button></div></div>
+    <div class="hcard glass"><div class="hcard-h"><h3>✅ À faire aujourd'hui</h3></div><div class="todo">${todo.map(x=>`<button data-go="${x.go}" class="${x.done?"done":""}"><span class="ic">${x.ic}</span><span>${esc(x.t)}<small>${esc(x.s)}</small></span><span class="go">${x.done?"✓":"›"}</span></button>`).join("")}</div></div>
+    <div class="hcard glass"><div class="hcard-h"><h3>⚽ Prochaines affiches</h3><button class="linkbtn" data-go="matchs">Tous les matchs ›</button></div>
+      <div class="next-list">${nx.map(({m,d})=>`<div class="next-m"><button class="t" data-openm="${esc(m.id)}" data-d="${esc(d)}"><b>${esc(tshort(m.h))} – ${esc(tshort(m.a))}</b><small>${esc(LG[m.l].name)} · ${m.tbc?"date à confirmer":esc(fDT.format(m.k))}</small></button><div class="odds">${["1","X","2"].map(k=>{const o=oddOf(m,k);const sel=S.slip.some(s=>s.mid===m.id&&s.mk===k);return o?`<button class="odd" data-mid="${esc(m.id)}" data-d="${esc(d)}" data-mk="${k}" aria-pressed="${sel}"><small>${k==="X"?"N":k}</small><b class="num">${o.toFixed(2)}</b></button>`:""}).join("")}</div></div>`).join("")||`<p class="empty">Les prochains matchs arrivent…</p>`}</div></div>
+    <div class="hcard glass"><div class="hcard-h"><h3>🎮 Jouer</h3></div>
+      <div class="mini-tiles"><button data-go="matchs:live"><span class="ic">⚡</span><b>Live flash</b><small>Paris express non-stop</small><span class="pill live">Live</span></button><button data-go="jeux:duel"><span class="ic">⚔️</span><b>Duel 1v1</b><small>Défie un pote</small>${duelTodo?`<span class="pill star">${duelTodo}</span>`:""}</button><button data-go="casino"><span class="ic">🎰</span><b>Casino</b><small>Roulette, blackjack…</small></button><button data-go="jeux"><span class="ic">🕹️</span><b>Mini-jeux</b><small>${dailyCount()} gratuit${dailyCount()>1?"s":""} dispo</small></button></div></div>
+    <div class="hcard glass"><div class="hcard-h"><h3>💬 Chat général</h3><button class="linkbtn" data-go="groupes:global">Ouvrir ›</button></div>
+      <div class="chat-peek">${g.map(x=>`<p><b>${styledName((x.u===S.uid?S.me.pseudo:x.p)||"Joueur",x.u)}</b> · ${x.kind==="bet"?"🎟️ a partagé un ticket":esc(x.t)}</p>`).join("")||`<p class="note">Personne n'a encore parlé. Lance la discussion !</p>`}</div></div>
+    <div class="hcard glass"><div class="hcard-h"><h3>🏆 Top joueurs</h3><button class="linkbtn" data-go="classement">Classement ›</button></div>
+      <div class="top3">${lb.slice().sort((a,b)=>(Number(b.score)||0)-(Number(a.score)||0)).slice(0,3).map((p,i)=>`<div><span>${["🥇","🥈","🥉"][i]} ${FUT?FUT.nameHtml(lbName(p),p):esc(lbName(p))}</span><b class="num">${Number(p.score)||0} pts</b></div>`).join("")||`<p class="note">Chargement…</p>`}</div></div>
+  </div>`;
+}
+function go(target){
+  const [view,sub]=target.split(":");
+  if(view==="shop"&&FUT){FUT.setTab(sub||"shop");setView("shop");renderShop();return}
+  if(view==="jeux"){setView("jeux");if(sub)openGame(sub);return}
+  if(view==="matchs"){S.detail=null;if(sub==="live")S.matchMode="live";else if(!sub)S.matchMode="foot";setView("matchs");renderMatchs();return}
+  if(view==="groupes"){if(sub)S.social=sub;setView("groupes");renderGroupes();return}
+  setView(view);
+}
 
 /* ---------- Gifts from the creator ---------- */
 const giftQueue=[];let giftBusy=false;
@@ -649,7 +698,7 @@ function showGift(){
 }
 
 /* ---------- Glue ---------- */
-function renderTabs(){const sb=$("#shopBadge");if(sb&&FUT){const n=S.mode==="cloud"?FUT.claimable():0;sb.hidden=!n;sb.textContent=n}const b=$("#gBadge");b.hidden=!S.unread;b.textContent=S.unread;const j=$("#jBadge");if(j){const n=S.mode==="cloud"?dailyCount():0;j.hidden=!n;j.textContent=n}}
+function renderTabs(){const sb=$("#cBadge");if(sb&&FUT){const sm=S.mode==="cloud"?FUT.summary():null;const n=sm?sm.claim+sm.packs:0;sb.hidden=!n;sb.textContent=n}const b=$("#gBadge");b.hidden=!S.unread;b.textContent=S.unread;const j=$("#jBadge");if(j){const n=S.mode==="cloud"?dailyCount():0;j.hidden=!n;j.textContent=n}}
 let lastBal=null;
 function renderHeader(){const el=$("#bal");if(lastBal!==null&&lastBal!==S.me.balance){el.classList.remove("bump");void el.offsetWidth;el.classList.add("bump")}lastBal=S.me.balance;el.innerHTML=S.me.balance+"<span>pts</span>";$("#who").textContent=S.mode==="cloud"?(S.me.pseudo||S.names[S.uid]||""):S.mode==="loading"?"Chargement…":"Hors connexion"}
 function avatar(uid,label,cls,data){const h=hash(uid||"x")%360;const fr=FUT&&data?FUT.styleOf(data).frame:null;return`<i class="${cls}${fr?" vp-framed":""}" style="background:radial-gradient(circle at 32% 26%,hsl(${h} 75% 64%),hsl(${h} 62% 36%) 72%)${fr?";--fr:"+fr.css:""}" aria-hidden="true">${esc((label||"?").trim().slice(0,1).toUpperCase())}</i>`}
@@ -661,7 +710,7 @@ function watchLeaderboard(){
     clearTimeout(t);S.lbErr=false;S.lb=snap.docs.map(d=>Object.assign({uid:d.id},d.data()));
     const missing=S.lb.filter(p=>!p.pseudo&&!S.names[p.uid]).map(p=>p.uid);
     if(S.user&&missing.length){try{const ps=await S.user.profiles(missing.slice(0,64));Object.values(ps).forEach(p=>{if(p.name)S.names[p.id]=p.name})}catch(e){}}
-    renderClassement();if(S.view==="matchs")renderMatchs();
+    renderClassement();if(S.view==="matchs")renderMatchs();if(S.view==="accueil")renderHome();
   },()=>{clearTimeout(t);S.lbErr=true;renderClassement()});
 }
 function playerSheet(uid){
@@ -679,7 +728,7 @@ function playerSheet(uid){
 function renderClassement(){
   const v=$("#v-classement");
   if(S.mode!=="cloud"){v.innerHTML=`<div><h2>Classement</h2></div><div class="glass panel empty">${S.mode==="loading"?"Connexion…":"Connecte-toi pour voir le classement."}</div>`;return}
-  let h=`<div><h2>Classement général</h2><p class="sub">Tous les joueurs de Vprono, classés par points : solde + mises en cours.</p></div>`;
+  let h=socialNav("classement")+`<div><h2>Classement général</h2><p class="sub">Tous les joueurs de Vprono, classés par points : solde + mises en cours.</p></div>`;
   if(!S.lb){v.innerHTML=h+(S.lbErr?`<div class="glass panel empty">Le classement n'est pas joignable pour l'instant.</div>`:`<div class="skeleton"></div><div class="skeleton"></div>`);return}
   const lb=S.lb.slice().sort((a,b)=>(Number(b.score)||scoreOf(b))-(Number(a.score)||scoreOf(a))),pts=p=>Number(p.score)||scoreOf(p);
   const myIdx=lb.findIndex(p=>p.uid===S.uid);
@@ -707,8 +756,8 @@ function renderWelcome(){
     <button class="linkbtn" id="wSkip" style="align-self:center">Plus tard</button></div>`;
   setTimeout(()=>{const i=$("#wPseudo");if(i)i.focus()},50);
 }
-function renderAll(){renderHeader();renderTabs();renderMatchs();renderSlip();renderParis();renderGroupes();renderJeux();renderClassement();renderWelcome()}
-function setView(v){const changed=S.view!==v;if(changed&&S.view==="jeux"&&GAMES){GAMES.unmount()}if(changed&&S.view==="casino"&&CASINO)CASINO.leave();S.view=v;S.slipOpen=false;if(v==="groupes"){S.unread=0;renderTabs();S.chatJump=true;S.gJump=true;renderChat()}document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===v));if(v==="classement"){watchLeaderboard();renderClassement()}if(v==="casino")renderCasino();if(v==="shop")renderShop();["matchs","paris","groupes","jeux","classement","casino","shop"].forEach(x=>{const el=$("#v-"+x);el.hidden=x!==v;if(x===v&&changed){el.classList.remove("enter");void el.offsetWidth;el.classList.add("enter")}});$("#slip").hidden=v!=="matchs"&&!S.slip.length;renderSlip();window.scrollTo({top:0});if(v==="jeux")renderJeux();if(v==="paris")renderParis()}
+function renderAll(){renderHeader();renderTabs();renderHome();renderMatchs();renderSlip();renderParis();renderGroupes();renderJeux();renderClassement();renderWelcome()}
+function setView(v){const changed=S.view!==v;if(changed&&S.view==="jeux"&&GAMES){GAMES.unmount()}if(changed&&S.view==="casino"&&CASINO)CASINO.leave();S.view=v;S.slipOpen=false;if(v==="groupes"){S.unread=0;renderTabs();S.chatJump=true;S.gJump=true;renderChat()}const tabOf={casino:"jeux",classement:"groupes"};document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===(tabOf[v]||v)));if(v==="accueil")renderHome();if(v==="classement"){watchLeaderboard();renderClassement()}if(v==="casino")renderCasino();if(v==="shop")renderShop();["accueil","matchs","paris","groupes","jeux","classement","casino","shop"].forEach(x=>{const el=$("#v-"+x);el.hidden=x!==v;if(x===v&&changed){el.classList.remove("enter");void el.offsetWidth;el.classList.add("enter")}});$("#slip").hidden=v!=="matchs"&&!S.slip.length;renderSlip();window.scrollTo({top:0});if(v==="jeux")renderJeux();if(v==="paris")renderParis()}
 function selectDay(d){S.day=d;S.detail=null;watchDay(d);renderMatchs()}
 
 $("#tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(b)setView(b.dataset.v)});
@@ -726,7 +775,8 @@ document.addEventListener("click",async e=>{
   const t=e.target.closest("button,[id=slipToggle]");if(!t)return;
   if(t.id==="giftOk"){$("#welcome").hidden=true;showGift();return}
   if(S.view==="casino"&&CASINO&&CASINO.click(t))return;
-  if(t.id==="shopBtn"){setView("shop");return}
+  if(t.dataset.go){go(t.dataset.go);return}
+  if(t.dataset.openm){S.day=t.dataset.d;watchDay(S.day);S.detail=t.dataset.openm;S.detailDay=t.dataset.d;S.sheetTab="paris";S.matchMode="foot";setView("matchs");renderMatchs();return}
   if(FUT&&FUT.click(t))return;
   if(t.id==="pClose"){$("#welcome").hidden=true;return}
   if(t.id==="boostGo"){placeBoost();return}
@@ -758,7 +808,7 @@ document.addEventListener("click",async e=>{
   else if(t.id==="gCreate")createGroup();
   else if(t.id==="gJoin")joinGroup();
   else if(t.dataset.g)openGroup(t.dataset.g);
-  else if(t.dataset.social){S.social=t.dataset.social;if(S.social==="global"){S.unread=0;renderTabs()}renderGroupes()}
+  else if(t.dataset.social){S.social=t.dataset.social;if(S.view!=="groupes")setView("groupes");if(S.social==="global"){S.unread=0;renderTabs()}renderGroupes()}
   else if(t.dataset.gshare){const b=S.me.bets.find(x=>x.id===t.dataset.gshare);if(!b)return;if(await sendGlobal({kind:"bet",bet:{n:b.legs.length,stake:b.stake,odds:b.odds,legs:b.legs.map(l=>(l.lbl||l.mk)+" · "+(l.mt||"")+" @"+l.odd.toFixed(2))}}))toast("Ticket partagé dans le chat général.")}
   else if(t.id==="copyCode"){const c=S.activeGroup;try{await navigator.clipboard.writeText(c);toast("Code copié : "+c)}catch(_){toast("Code du groupe : "+c)}}
   else if(t.id==="leave"){if(t.dataset.confirm){S.me.groups=S.me.groups.filter(c=>c!==S.activeGroup);await save();openGroup(S.me.groups[0]||null);toast("Tu as quitté le groupe.")}else{t.dataset.confirm="1";t.textContent="Confirmer ?"}}
@@ -777,7 +827,7 @@ document.addEventListener("input",e=>{
   if(e.target.id==="stakeIn"){S.stake=e.target.value===""?"":Number(e.target.value);const pos=e.target.selectionStart;renderSlip();const i=$("#stakeIn");if(i){i.focus();try{i.setSelectionRange(pos,pos)}catch(_){}}}
 });
 
-renderAll();setView("matchs");
+renderAll();setView("accueil");
 setInterval(()=>{renderHeader();if(S.view==="matchs"&&S.matchMode!=="live")renderMatchs()},30000);
 setInterval(()=>{if(S.view==="matchs"&&S.matchMode==="live"&&!S.detail&&LIVE&&LIVE.tick())renderMatchs()},1000);
 setInterval(()=>{if(LIVE&&S.mode==="cloud"){LIVE.settle();if(settle()){renderHeader();if(S.view==="paris")renderParis();if(S.view==="matchs")renderMatchs()}}},10000);

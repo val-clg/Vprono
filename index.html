@@ -413,6 +413,50 @@ footer p{max-width:70ch}
 .mtile.boom{background:var(--loss);animation:shake .4s}
 @keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
 .casino-stats .pos{color:var(--win)}.casino-stats .neg{color:var(--loss)}
+/* ---------- home ---------- */
+.home-hero{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.home-hero h2{font-size:32px}
+.home-stats{display:flex;gap:8px}
+.home-stats button{display:flex;flex-direction:column;align-items:flex-start;padding:8px 14px;border-radius:18px;border:1px solid var(--glass-edge);background:var(--glass);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);box-shadow:inset 0 1px 0 var(--hl)}
+.home-stats b{font-family:var(--display);font-size:22px;font-weight:900;line-height:1.1}
+.home-stats small{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.home-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px;align-items:start}
+.hcard{border-radius:var(--r-xl);padding:16px;display:flex;flex-direction:column;gap:10px}
+.hcard>*{position:relative}
+.hcard-h{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.hcard-h h3{display:flex;align-items:center;gap:8px}
+.hcard-h .linkbtn{font-size:13px}
+.todo{display:flex;flex-direction:column;gap:6px}
+.todo button{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:16px;border:1px solid var(--glass-edge);background:var(--glass-strong);text-align:left;box-shadow:inset 0 1px 0 var(--hl)}
+.todo button .ic{font-size:22px;width:30px;text-align:center;flex:none}
+.todo button span:nth-child(2){flex:1;min-width:0;font-weight:600}
+.todo button small{display:block;color:var(--muted);font-weight:500;font-size:12px}
+.todo button .go{color:var(--accent);font-weight:800}
+.todo .done{opacity:.55}
+.club-card{background:linear-gradient(150deg,color-mix(in srgb,#9B5CFF 26%,var(--glass)),var(--glass))}
+.club-row{display:flex;align-items:center;gap:14px}
+.club-row .fcard{width:84px}
+.club-row .fcard .fc-top b{font-size:20px}
+.club-meta{display:flex;flex-direction:column;gap:6px;flex:1;min-width:0}
+.club-meta .coll-bar{flex:none}
+.mini-tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.mini-tiles button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:12px;border-radius:18px;border:1px solid var(--glass-edge);background:var(--glass-strong);text-align:left;position:relative}
+.mini-tiles button b{font-family:var(--display);font-size:16px}
+.mini-tiles button small{color:var(--muted);font-size:12px}
+.mini-tiles button .pill{position:absolute;top:8px;right:8px}
+.mini-tiles .ic{font-size:24px}
+.next-list{display:flex;flex-direction:column;gap:8px}
+.next-m{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 10px;border-radius:16px;background:var(--glass);border:1px solid var(--glass-edge)}
+.next-m .t{display:flex;flex-direction:column;min-width:0;text-align:left;border:0;background:none;padding:0}
+.next-m .t b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.next-m .t small{color:var(--muted);font-size:12px}
+.next-m .odds .odd{min-width:46px;padding:4px 6px}
+.next-m .odds .odd b{font-size:15px}
+.chat-peek{display:flex;flex-direction:column;gap:6px}
+.chat-peek p{margin:0;padding:8px 12px;border-radius:14px;background:var(--glass-strong);border:1px solid var(--glass-edge);overflow-wrap:anywhere}
+.top3{display:flex;flex-direction:column;gap:4px}
+.top3 div{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.sub-nav{align-self:flex-start;max-width:100%;overflow-x:auto}
 /* ---------- Club: cards, packs, shop ---------- */
 .shop-btn{position:relative;width:40px;height:40px;border-radius:50%;border:1px solid var(--glass-edge);background:var(--glass-strong);font-size:18px;box-shadow:inset 0 1px 0 var(--hl)}
 .shop-btn .badge{position:absolute;top:-4px;right:-4px;background:var(--live);color:#fff;border-radius:999px;font-size:10px;font-weight:800;padding:0 5px;line-height:16px}
@@ -662,12 +706,13 @@ img{max-width:100%}
 <header class="top"><div class="wrap">
   <div class="topbar glass">
     <div class="brand"><svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="vpg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2F7BFF"/><stop offset=".55" stop-color="#7B5CFF"/><stop offset="1" stop-color="#FF4D8D"/></linearGradient><linearGradient id="vph" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient></defs><rect x="2" y="2" width="60" height="60" rx="18" fill="url(#vpg)"/><rect x="2" y="2" width="60" height="30" rx="18" fill="url(#vph)"/><path d="M15 17l13 30 11-25" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="45" cy="17" r="7.5" fill="#fff"/><path d="M45 12.6l3.6 2.6-1.4 4.2h-4.4l-1.4-4.2z" fill="#1B1F3B"/></svg><span>V<i>prono</i></span> <small>0 € RÉEL</small></div>
-    <div class="wallet"><span id="who">Chargement…</span><button class="shop-btn" id="shopBtn" aria-label="Boutique et collection">🛍️<span class="badge num" id="shopBadge" hidden></span></button><div class="bal num" id="bal">50<span>pts</span></div></div>
+    <div class="wallet"><span id="who">Chargement…</span><div class="bal num" id="bal">50<span>pts</span></div></div>
   </div>
 </div></header>
 
 <main class="wrap">
-  <section class="view" id="v-matchs"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></section>
+  <section class="view" id="v-accueil"></section>
+  <section class="view" id="v-matchs" hidden><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></section>
   <section class="view" id="v-paris" hidden></section>
   <section class="view" id="v-groupes" hidden></section>
   <section class="view" id="v-jeux" hidden></section>
@@ -680,12 +725,12 @@ img{max-width:100%}
 <div class="scrim" id="scrim"></div>
 <button class="fab" id="fab" hidden></button>
 <nav class="tabbar glass" role="tablist" id="tabs" aria-label="Navigation">
-  <button role="tab" data-v="matchs" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7l4 3-1.5 4.5h-5L8 10z"/><path d="M12 3v4M16 10l4.5-1.5M14.5 14.5l2.5 4M9.5 14.5L7 18.5M8 10L3.5 8.5"/></svg>Matchs</button>
+  <button role="tab" data-v="accueil" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>Accueil</button>
+  <button role="tab" data-v="matchs" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7l4 3-1.5 4.5h-5L8 10z"/><path d="M12 3v4M16 10l4.5-1.5M14.5 14.5l2.5 4M9.5 14.5L7 18.5M8 10L3.5 8.5"/></svg>Matchs</button>
   <button role="tab" data-v="paris" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 000 4v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2a2 2 0 000-4z"/><path d="M14 5v12" stroke-dasharray="2 2"/></svg>Paris</button>
-  <button role="tab" data-v="groupes" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c.6-3.2 3-5 6-5s5.4 1.8 6 5"/><circle cx="17" cy="9" r="2.5"/><path d="M16.5 14c2.4.2 4 1.7 4.5 4.5"/></svg>Social<span class="badge num" id="gBadge" hidden></span></button>
-  <button role="tab" data-v="classement" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 01-10 0z"/><path d="M7 6H4.5a2.5 2.5 0 002.8 3.5M17 6h2.5a2.5 2.5 0 01-2.8 3.5"/></svg>Top</button>
+  <button role="tab" data-v="shop" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="11" height="15" rx="2"/><path d="M9 21h9a2 2 0 002-2V7"/><path d="M9.5 8.5l1 2 2 .3-1.5 1.4.4 2-1.9-1-1.9 1 .4-2-1.5-1.4 2-.3z"/></svg>Club<span class="badge num" id="cBadge" hidden></span></button>
   <button role="tab" data-v="jeux" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="7" width="19" height="11" rx="5.5"/><path d="M7.5 10.5v4M5.5 12.5h4"/><circle cx="15.5" cy="11.5" r=".9" fill="currentColor"/><circle cx="17.5" cy="13.8" r=".9" fill="currentColor"/></svg>Jeux<span class="badge num" id="jBadge" hidden></span></button>
-  <button role="tab" data-v="casino" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/><circle cx="16" cy="8" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="8" cy="16" r="1.3" fill="currentColor"/><circle cx="16" cy="16" r="1.3" fill="currentColor"/></svg>Casino</button>
+  <button role="tab" data-v="groupes" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c.6-3.2 3-5 6-5s5.4 1.8 6 5"/><circle cx="17" cy="9" r="2.5"/><path d="M16.5 14c2.4.2 4 1.7 4.5 4.5"/></svg>Social<span class="badge num" id="gBadge" hidden></span></button>
 </nav>
 <div class="toast glass" id="toast" hidden></div>
 <div class="welcome" id="welcome" hidden></div>
